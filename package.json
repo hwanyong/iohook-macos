@@ -1,0 +1,45 @@
+{
+  "name": "iohook-macos",
+  "version": "0.1.0",
+  "description": "High-performance macOS system event hook library for Electron applications",
+  "main": "index.js",
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "rebuild": "node-gyp rebuild",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "macos",
+    "electron",
+    "event",
+    "hook",
+    "keyboard",
+    "mouse",
+    "native",
+    "cgeventtap",
+    "accessibility"
+  ],
+  "author": "iohook-macos",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/iohook-macos.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/iohook-macos/issues"
+  },
+  "homepage": "https://github.com/your-username/iohook-macos#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "os": ["darwin"],
+  "dependencies": {
+    "node-addon-api": "^7.0.0",
+    "node-gyp-build": "^4.6.0"
+  },
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-rebuild": "^3.2.9"
+  },
+  "gypfile": true
+} 
