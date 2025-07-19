@@ -13,6 +13,27 @@ CFRunLoopRef eventRunLoop = NULL;
 pthread_t eventThread;
 bool isMonitoring = false;
 bool shouldStopThread = false;
+bool isModificationEnabled = false; // New flag for modification/consumption
+
+// Event filtering configuration
+struct EventFilter {
+    bool enabled = false;
+    
+    // Process filtering
+    bool filterByProcessId = false;
+    int64_t targetProcessId = 0;
+    bool excludeProcessId = false; // If true, exclude the target process; if false, include only the target
+    
+    // Coordinate filtering
+    bool filterByCoordinates = false;
+    double minX = 0, minY = 0, maxX = 0, maxY = 0;
+    
+    // Event type filtering
+    bool filterByEventType = false;
+    bool allowKeyboard = true;
+    bool allowMouse = true;
+    bool allowScroll = true;
+} eventFilter;
 
 // JavaScript emit function reference
 Napi::ThreadSafeFunction emitFunction;
@@ -39,6 +60,14 @@ struct EventData {
     int64_t deltaX, deltaY, deltaZ;
     int64_t fixedPtDeltaY;
     bool hasScrollData;
+    
+    // Event modification/consumption
+    bool isConsumed = false;
+    bool isModified = false;
+    
+    // Modified values (only used if isModified is true)
+    uint16_t modifiedKeyCode;
+    double modifiedX, modifiedY;
 };
 
 // Event callback function
@@ -87,6 +116,56 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         default:
             // Ignore other events for now
             return event;
+    }
+    
+    // Apply event filtering if enabled
+    if (eventFilter.enabled) {
+        // Get event data for filtering
+        CGPoint location = CGEventGetLocation(event);
+        int64_t processId = CGEventGetIntegerValueField(event, kCGEventTargetUnixProcessID);
+        
+        // Process ID filtering
+        if (eventFilter.filterByProcessId) {
+            if (eventFilter.excludeProcessId) {
+                // Exclude events from target process
+                if (processId == eventFilter.targetProcessId) {
+                    std::cout << "[iohook-macos] Event filtered out (excluded process: " << processId << ")" << std::endl;
+                    return event; // Pass through without processing
+                }
+            } else {
+                // Include only events from target process
+                if (processId != eventFilter.targetProcessId) {
+                    std::cout << "[iohook-macos] Event filtered out (process not matching: " << processId << ")" << std::endl;
+                    return event; // Pass through without processing
+                }
+            }
+        }
+        
+        // Coordinate filtering
+        if (eventFilter.filterByCoordinates) {
+            if (location.x < eventFilter.minX || location.x > eventFilter.maxX ||
+                location.y < eventFilter.minY || location.y > eventFilter.maxY) {
+                std::cout << "[iohook-macos] Event filtered out (outside coordinate range: " 
+                          << location.x << ", " << location.y << ")" << std::endl;
+                return event; // Pass through without processing
+            }
+        }
+        
+        // Event type filtering
+        if (eventFilter.filterByEventType) {
+            bool isKeyboard = (type == kCGEventKeyDown || type == kCGEventKeyUp);
+            bool isMouse = (type >= kCGEventLeftMouseDown && type <= kCGEventRightMouseDragged);
+            bool isScroll = (type == kCGEventScrollWheel);
+            
+            if ((isKeyboard && !eventFilter.allowKeyboard) ||
+                (isMouse && !eventFilter.allowMouse) ||
+                (isScroll && !eventFilter.allowScroll)) {
+                std::cout << "[iohook-macos] Event filtered out (event type not allowed: " << eventName << ")" << std::endl;
+                return event; // Pass through without processing
+            }
+        }
+        
+        std::cout << "[iohook-macos] Event passed filtering checks" << std::endl;
     }
     
     // Send event to JavaScript if emit function is available
@@ -152,6 +231,13 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
             eventDataObj.Set("processId", Napi::Number::New(env, data->processId));
             eventDataObj.Set("windowId", Napi::Number::New(env, 0)); // Placeholder
             
+            // Add preventDefault method
+            auto preventDefaultCallback = [data](const Napi::CallbackInfo& info) -> Napi::Value {
+                data->isConsumed = true;
+                return info.Env().Undefined();
+            };
+            eventDataObj.Set("preventDefault", Napi::Function::New(env, preventDefaultCallback));
+            
             // Keyboard-specific data
             if (data->hasKeyCode) {
                 eventDataObj.Set("keyCode", Napi::Number::New(env, data->keyCode));
@@ -186,13 +272,56 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
                 eventDataObj
             });
             
-            std::cout << "[iohook-macos] Detailed event sent to JavaScript: " << data->eventName << std::endl;
+            // Check if event data was modified by JavaScript
+            if (data->hasKeyCode) {
+                Napi::Value newKeyCode = eventDataObj.Get("keyCode");
+                if (newKeyCode.IsNumber() && newKeyCode.As<Napi::Number>().Uint32Value() != data->keyCode) {
+                    data->isModified = true;
+                    data->modifiedKeyCode = newKeyCode.As<Napi::Number>().Uint32Value();
+                }
+            }
             
-            // Clean up
-            delete data;
+            Napi::Value newX = eventDataObj.Get("x");
+            Napi::Value newY = eventDataObj.Get("y");
+            if (newX.IsNumber() && newX.As<Napi::Number>().DoubleValue() != data->x) {
+                data->isModified = true;
+                data->modifiedX = newX.As<Napi::Number>().DoubleValue();
+            }
+            if (newY.IsNumber() && newY.As<Napi::Number>().DoubleValue() != data->y) {
+                data->isModified = true;
+                data->modifiedY = newY.As<Napi::Number>().DoubleValue();
+            }
+            
+            std::cout << "[iohook-macos] Event processed - Consumed: " << (data->isConsumed ? "YES" : "NO") 
+                      << ", Modified: " << (data->isModified ? "YES" : "NO") << std::endl;
         };
         
         emitFunction.BlockingCall(eventData, callback);
+        
+        // Check if event should be consumed (only if modification is enabled)
+        if (isModificationEnabled && eventData->isConsumed) {
+            std::cout << "[iohook-macos] Event consumed - blocking propagation" << std::endl;
+            delete eventData;
+            return NULL; // Consume the event
+        }
+        
+        // Check if event should be modified (only if modification is enabled)
+        if (isModificationEnabled && eventData->isModified) {
+            std::cout << "[iohook-macos] Event modified - applying changes" << std::endl;
+            
+            // Apply modifications to the original CGEventRef
+            if (eventData->hasKeyCode && eventData->modifiedKeyCode != eventData->keyCode) {
+                CGEventSetIntegerValueField(event, kCGKeyboardEventKeycode, eventData->modifiedKeyCode);
+            }
+            
+            if (eventData->modifiedX != eventData->x || eventData->modifiedY != eventData->y) {
+                CGPoint newLocation = CGPointMake(eventData->modifiedX, eventData->modifiedY);
+                CGEventSetLocation(event, newLocation);
+            }
+        }
+        
+        // Clean up
+        delete eventData;
     }
     
     // Return the event unmodified (passthrough mode)
@@ -280,7 +409,7 @@ Napi::Value StartMonitoring(const Napi::CallbackInfo& info) {
     
     eventTap = CGEventTapCreate(kCGSessionEventTap,
                                kCGHeadInsertEventTap,
-                               kCGEventTapOptionListenOnly,
+                               isModificationEnabled ? kCGEventTapOptionDefault : kCGEventTapOptionListenOnly,
                                eventMask,
                                eventTapCallback,
                                NULL);
@@ -366,6 +495,135 @@ Napi::Value IsMonitoring(const Napi::CallbackInfo& info) {
     return Napi::Boolean::New(env, isMonitoring);
 }
 
+// Enable event modification and consumption
+Napi::Value EnableModificationAndConsumption(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    
+    if (isModificationEnabled) {
+        std::cout << "[iohook-macos] Event modification and consumption is already enabled" << std::endl;
+        return env.Undefined();
+    }
+    
+    isModificationEnabled = true;
+    std::cout << "[iohook-macos] Event modification and consumption enabled" << std::endl;
+    
+    if (isMonitoring) {
+        std::cout << "[iohook-macos] WARNING: Restart monitoring to apply changes" << std::endl;
+    }
+    
+    return env.Undefined();
+}
+
+// Disable event modification and consumption
+Napi::Value DisableModificationAndConsumption(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    
+    if (!isModificationEnabled) {
+        std::cout << "[iohook-macos] Event modification and consumption is already disabled" << std::endl;
+        return env.Undefined();
+    }
+    
+    isModificationEnabled = false;
+    std::cout << "[iohook-macos] Event modification and consumption disabled" << std::endl;
+    
+    if (isMonitoring) {
+        std::cout << "[iohook-macos] WARNING: Restart monitoring to apply changes" << std::endl;
+    }
+    
+    return env.Undefined();
+}
+
+// Set process ID filter
+Napi::Value SetProcessFilter(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    
+    if (info.Length() < 2 || !info[0].IsNumber() || !info[1].IsBoolean()) {
+        Napi::TypeError::New(env, "Expected arguments: processId (number), exclude (boolean)").ThrowAsJavaScriptException();
+        return env.Undefined();
+    }
+    
+    int64_t processId = info[0].As<Napi::Number>().Int64Value();
+    bool exclude = info[1].As<Napi::Boolean>().Value();
+    
+    eventFilter.filterByProcessId = true;
+    eventFilter.targetProcessId = processId;
+    eventFilter.excludeProcessId = exclude;
+    eventFilter.enabled = true;
+    
+    std::cout << "[iohook-macos] Process filter set - Target: " << processId 
+              << " (Mode: " << (exclude ? "EXCLUDE" : "INCLUDE") << ")" << std::endl;
+    
+    return env.Undefined();
+}
+
+// Set coordinate range filter
+Napi::Value SetCoordinateFilter(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    
+    if (info.Length() < 4 || !info[0].IsNumber() || !info[1].IsNumber() || 
+        !info[2].IsNumber() || !info[3].IsNumber()) {
+        Napi::TypeError::New(env, "Expected arguments: minX, minY, maxX, maxY (all numbers)").ThrowAsJavaScriptException();
+        return env.Undefined();
+    }
+    
+    double minX = info[0].As<Napi::Number>().DoubleValue();
+    double minY = info[1].As<Napi::Number>().DoubleValue();
+    double maxX = info[2].As<Napi::Number>().DoubleValue();
+    double maxY = info[3].As<Napi::Number>().DoubleValue();
+    
+    eventFilter.filterByCoordinates = true;
+    eventFilter.minX = minX;
+    eventFilter.minY = minY;
+    eventFilter.maxX = maxX;
+    eventFilter.maxY = maxY;
+    eventFilter.enabled = true;
+    
+    std::cout << "[iohook-macos] Coordinate filter set - Range: (" << minX << ", " << minY 
+              << ") to (" << maxX << ", " << maxY << ")" << std::endl;
+    
+    return env.Undefined();
+}
+
+// Set event type filter
+Napi::Value SetEventTypeFilter(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    
+    if (info.Length() < 3 || !info[0].IsBoolean() || !info[1].IsBoolean() || !info[2].IsBoolean()) {
+        Napi::TypeError::New(env, "Expected arguments: allowKeyboard, allowMouse, allowScroll (all booleans)").ThrowAsJavaScriptException();
+        return env.Undefined();
+    }
+    
+    bool allowKeyboard = info[0].As<Napi::Boolean>().Value();
+    bool allowMouse = info[1].As<Napi::Boolean>().Value();
+    bool allowScroll = info[2].As<Napi::Boolean>().Value();
+    
+    eventFilter.filterByEventType = true;
+    eventFilter.allowKeyboard = allowKeyboard;
+    eventFilter.allowMouse = allowMouse;
+    eventFilter.allowScroll = allowScroll;
+    eventFilter.enabled = true;
+    
+    std::cout << "[iohook-macos] Event type filter set - Keyboard: " << (allowKeyboard ? "YES" : "NO")
+              << ", Mouse: " << (allowMouse ? "YES" : "NO") 
+              << ", Scroll: " << (allowScroll ? "YES" : "NO") << std::endl;
+    
+    return env.Undefined();
+}
+
+// Clear all filters
+Napi::Value ClearFilters(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    
+    eventFilter.enabled = false;
+    eventFilter.filterByProcessId = false;
+    eventFilter.filterByCoordinates = false;
+    eventFilter.filterByEventType = false;
+    
+    std::cout << "[iohook-macos] All event filters cleared" << std::endl;
+    
+    return env.Undefined();
+}
+
 // Check accessibility permissions
 Napi::Value CheckAccessibilityPermissions(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
@@ -437,6 +695,18 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
                 Napi::Function::New(env, CheckAccessibilityPermissions));
     exports.Set(Napi::String::New(env, "requestAccessibilityPermissions"), 
                 Napi::Function::New(env, RequestAccessibilityPermissions));
+    exports.Set(Napi::String::New(env, "enableModificationAndConsumption"), 
+                Napi::Function::New(env, EnableModificationAndConsumption));
+    exports.Set(Napi::String::New(env, "disableModificationAndConsumption"), 
+                Napi::Function::New(env, DisableModificationAndConsumption));
+    exports.Set(Napi::String::New(env, "setProcessFilter"), 
+                Napi::Function::New(env, SetProcessFilter));
+    exports.Set(Napi::String::New(env, "setCoordinateFilter"), 
+                Napi::Function::New(env, SetCoordinateFilter));
+    exports.Set(Napi::String::New(env, "setEventTypeFilter"), 
+                Napi::Function::New(env, SetEventTypeFilter));
+    exports.Set(Napi::String::New(env, "clearFilters"), 
+                Napi::Function::New(env, ClearFilters));
     
     std::cout << "[iohook-macos] Native module initialized successfully" << std::endl;
     return exports;

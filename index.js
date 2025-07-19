@@ -120,6 +120,98 @@ class MacOSEventHook extends EventEmitter {
             return { hasPermissions: false, message: 'Permission request failed' }
         }
     }
+
+    /**
+     * Enables event modification and consumption functionality
+     * When enabled, events can be modified or prevented from propagating to the system
+     * Monitoring must be restarted for changes to take effect
+     */
+    enableModificationAndConsumption() {
+        try {
+            nativeModule.enableModificationAndConsumption()
+            console.log('[iohook-macos] JavaScript: Event modification and consumption enabled')
+        } catch (error) {
+            console.error('[iohook-macos] JavaScript: enableModificationAndConsumption failed:', error.message)
+            throw error
+        }
+    }
+
+    /**
+     * Disables event modification and consumption functionality
+     * The library reverts to observe-only mode for events
+     * Monitoring must be restarted for changes to take effect
+     */
+    disableModificationAndConsumption() {
+        try {
+            nativeModule.disableModificationAndConsumption()
+            console.log('[iohook-macos] JavaScript: Event modification and consumption disabled')
+        } catch (error) {
+            console.error('[iohook-macos] JavaScript: disableModificationAndConsumption failed:', error.message)
+            throw error
+        }
+    }
+
+    /**
+     * Sets a process ID filter to monitor only specific processes
+     * @param {number} processId - Target process ID
+     * @param {boolean} exclude - If true, exclude this process; if false, include only this process
+     */
+    setProcessFilter(processId, exclude = false) {
+        try {
+            nativeModule.setProcessFilter(processId, exclude)
+            console.log(`[iohook-macos] JavaScript: Process filter set - PID: ${processId}, Mode: ${exclude ? 'EXCLUDE' : 'INCLUDE'}`)
+        } catch (error) {
+            console.error('[iohook-macos] JavaScript: setProcessFilter failed:', error.message)
+            throw error
+        }
+    }
+
+    /**
+     * Sets a coordinate range filter to monitor only events within specified area
+     * @param {number} minX - Minimum X coordinate
+     * @param {number} minY - Minimum Y coordinate
+     * @param {number} maxX - Maximum X coordinate
+     * @param {number} maxY - Maximum Y coordinate
+     */
+    setCoordinateFilter(minX, minY, maxX, maxY) {
+        try {
+            nativeModule.setCoordinateFilter(minX, minY, maxX, maxY)
+            console.log(`[iohook-macos] JavaScript: Coordinate filter set - Range: (${minX}, ${minY}) to (${maxX}, ${maxY})`)
+        } catch (error) {
+            console.error('[iohook-macos] JavaScript: setCoordinateFilter failed:', error.message)
+            throw error
+        }
+    }
+
+    /**
+     * Sets event type filter to monitor only specific types of events
+     * @param {boolean} allowKeyboard - Allow keyboard events
+     * @param {boolean} allowMouse - Allow mouse events
+     * @param {boolean} allowScroll - Allow scroll events
+     */
+    setEventTypeFilter(allowKeyboard = true, allowMouse = true, allowScroll = true) {
+        try {
+            nativeModule.setEventTypeFilter(allowKeyboard, allowMouse, allowScroll)
+            console.log(`[iohook-macos] JavaScript: Event type filter set - Keyboard: ${allowKeyboard}, Mouse: ${allowMouse}, Scroll: ${allowScroll}`)
+        } catch (error) {
+            console.error('[iohook-macos] JavaScript: setEventTypeFilter failed:', error.message)
+            throw error
+        }
+    }
+
+    /**
+     * Clears all active event filters
+     * All events will be monitored again (no filtering)
+     */
+    clearFilters() {
+        try {
+            nativeModule.clearFilters()
+            console.log('[iohook-macos] JavaScript: All event filters cleared')
+        } catch (error) {
+            console.error('[iohook-macos] JavaScript: clearFilters failed:', error.message)
+            throw error
+        }
+    }
 }
 
 // Export singleton instance
