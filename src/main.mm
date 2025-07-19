@@ -1,111 +1,96 @@
 #include <napi.h>
 #include <iostream>
+#include <CoreFoundation/CoreFoundation.h>
+#include <Foundation/Foundation.h>
 #include <CoreGraphics/CoreGraphics.h>
 #include <ApplicationServices/ApplicationServices.h>
 #include <pthread.h>
+#include <queue>
+#include <mutex>
+
+// Simple event data structure for polling
+struct SimpleEvent {
+    std::string eventName;
+    double x, y;
+    double timestamp;
+    uint32_t processId;
+    uint16_t keyCode;
+    bool hasKeyCode;
+};
+
+// Thread-safe event queue
+std::queue<SimpleEvent> eventQueue;
+std::mutex queueMutex;
+const size_t MAX_QUEUE_SIZE = 1000; // Prevent memory overflow
 
 using namespace Napi;
 
-// Global variables for event tap
+// Global variables
 CFMachPortRef eventTap = NULL;
 CFRunLoopSourceRef runLoopSource = NULL;
-CFRunLoopRef eventRunLoop = NULL;
 pthread_t eventThread;
 bool isMonitoring = false;
 bool shouldStopThread = false;
-bool isModificationEnabled = false; // New flag for modification/consumption
 
-// Performance optimization settings
+// Performance configuration
 struct PerformanceConfig {
     bool enablePerformanceMode = false;
-    bool enableVerboseLogging = true;
-    
-    // Event throttling
     bool enableMouseMoveThrottling = false;
-    double mouseMoveThrottleInterval = 0.016; // ~60fps (16ms)
+    double mouseMoveThrottleInterval = 0.016; // ~60fps
+    bool enableVerboseLogging = true;
     double lastMouseMoveTime = 0;
-    
-    // Event filtering for performance
     bool skipMouseMoveInPerformanceMode = false;
-    
-    // Memory optimization
-    bool reuseEventDataObjects = false;
 } performanceConfig;
 
-// Event filtering configuration
-struct EventFilter {
+// Event filtering configuration  
+struct EventFilterConfig {
     bool enabled = false;
-    
-    // Process filtering
     bool filterByProcessId = false;
-    int64_t targetProcessId = 0;
-    bool excludeProcessId = false; // If true, exclude the target process; if false, include only the target
+    bool excludeProcessId = false; // true = exclude, false = include only
+    uint32_t targetProcessId = 0;
     
-    // Coordinate filtering
     bool filterByCoordinates = false;
-    double minX = 0, minY = 0, maxX = 0, maxY = 0;
+    double minX = 0, maxX = 0, minY = 0, maxY = 0;
     
-    // Event type filtering
     bool filterByEventType = false;
     bool allowKeyboard = true;
     bool allowMouse = true;
     bool allowScroll = true;
 } eventFilter;
 
-// JavaScript emit function reference
-Napi::ThreadSafeFunction emitFunction;
-
-// Event data structure for passing to JavaScript
-struct EventData {
-    std::string eventName;
-    double timestamp;
-    double x, y;
-    int64_t processId;
-    
-    // Keyboard data
-    uint16_t keyCode;
-    bool hasKeyCode;
-    bool shiftKey, controlKey, optionKey, commandKey, functionKey;
-    
-    // Mouse data
-    uint32_t button;
-    int64_t clickCount;
-    double pressure;
-    bool hasMouseData;
-    
-    // Scroll data
-    int64_t deltaX, deltaY, deltaZ;
-    int64_t fixedPtDeltaY;
-    bool hasScrollData;
-    
-    // Event modification/consumption
-    bool isConsumed = false;
-    bool isModified = false;
-    
-    // Modified values (only used if isModified is true)
-    uint16_t modifiedKeyCode;
-    double modifiedX, modifiedY;
-    
-    // Additional hardware data
-    bool hasOtherMouseData = false;
-    uint32_t otherMouseButton; // Button number for additional mouse buttons
-    
-    // Tablet/stylus data
-    bool hasTabletData = false;
-    double tabletPressure;
-    double tabletTiltX, tabletTiltY;
-    double tabletRotation;
-    uint32_t tabletDeviceID;
-    bool isTabletPointerEvent = false;
-    bool isTabletProximityEvent = false;
-    
-    // Advanced mouse features
-    double mouseAcceleration;
-    uint32_t mouseSubtype; // For distinguishing different mouse types
-};
+// Event modification settings
+bool isModificationEnabled = false;
 
 // Event callback function
 CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
+    // Skip processing if emit function is not available to prevent crashes
+    // if (!emitFunction) { // This line is removed as per the edit hint
+    //     return event;
+    // }
+    
+    // Rate limiting for high-frequency events to prevent ThreadSafeFunction overload
+    static double lastProcessTime = 0;
+    static int eventsSinceLastSecond = 0;
+    static double lastSecondMark = 0;
+    
+    double currentTime = CFAbsoluteTimeGetCurrent();
+    
+    // Reset counter every second
+    if (currentTime - lastSecondMark > 1.0) {
+        lastSecondMark = currentTime;
+        eventsSinceLastSecond = 0;
+    }
+    
+    eventsSinceLastSecond++;
+    
+    // Limit to 1000 events per second to prevent ThreadSafeFunction overload
+    if (eventsSinceLastSecond > 1000) {
+        if (performanceConfig.enableVerboseLogging) {
+            std::cout << "[iohook-macos] Rate limit exceeded, dropping event" << std::endl;
+        }
+        return event;
+    }
+    
     // Log detected events to console (C++ side) - only if verbose logging is enabled
     const char* eventName = nullptr;
     
@@ -246,263 +231,49 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         }
     }
     
-    // Send event to JavaScript if emit function is available
-    if (emitFunction && eventName) {
-        // Extract all event data first
-        EventData* eventData = new EventData();
-        eventData->eventName = eventName;
-        eventData->timestamp = CFAbsoluteTimeGetCurrent();
-        
-        // Get event location
+    // Send event to JavaScript queue (safe polling approach)
+    if (eventName) {
+        // Extract essential data
         CGPoint location = CGEventGetLocation(event);
-        eventData->x = location.x;
-        eventData->y = location.y;
+        double eventX = location.x;
+        double eventY = location.y;
+        uint32_t eventProcessId = (uint32_t)CGEventGetIntegerValueField(event, kCGEventTargetUnixProcessID);
+        uint16_t eventKeyCode = 0;
+        bool hasKeyCode = false;
         
-        // Get process info
-        eventData->processId = CGEventGetIntegerValueField(event, kCGEventTargetUnixProcessID);
-        
-        CGEventType eventType = CGEventGetType(event);
-        
-        // Extract keyboard-specific data
-        eventData->hasKeyCode = false;
-        if (eventType == kCGEventKeyDown || eventType == kCGEventKeyUp) {
-            // Safely check if event is valid before extracting data
+        // Extract keycode for keyboard events
+        if (type == kCGEventKeyDown || type == kCGEventKeyUp) {
             if (event) {
-                eventData->hasKeyCode = true;
-                
-                // Safely extract keycode with bounds checking
+                hasKeyCode = true;
                 int64_t rawKeyCode = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-                eventData->keyCode = (rawKeyCode >= 0 && rawKeyCode <= UINT16_MAX) ? (uint16_t)rawKeyCode : 0;
-                
-                // Safely extract flags
-                CGEventFlags flags = CGEventGetFlags(event);
-                eventData->shiftKey = (flags & kCGEventFlagMaskShift) != 0;
-                eventData->controlKey = (flags & kCGEventFlagMaskControl) != 0;
-                eventData->optionKey = (flags & kCGEventFlagMaskAlternate) != 0;
-                eventData->commandKey = (flags & kCGEventFlagMaskCommand) != 0;
-                eventData->functionKey = (flags & kCGEventFlagMaskSecondaryFn) != 0;
-                
-                if (performanceConfig.enableVerboseLogging) {
-                    std::cout << "[iohook-macos] Keyboard event - Key: " << eventData->keyCode 
-                              << ", Flags: " << flags << std::endl;
-                }
-            } else {
-                if (performanceConfig.enableVerboseLogging) {
-                    std::cout << "[iohook-macos] Warning: Invalid keyboard event pointer" << std::endl;
-                }
+                eventKeyCode = (rawKeyCode >= 0 && rawKeyCode <= UINT16_MAX) ? (uint16_t)rawKeyCode : 0;
             }
         }
         
-        // Extract mouse-specific data
-        eventData->hasMouseData = false;
-        if (eventType >= kCGEventLeftMouseDown && eventType <= kCGEventRightMouseDragged) {
-            eventData->hasMouseData = true;
-            eventData->button = (uint32_t)CGEventGetIntegerValueField(event, kCGMouseEventButtonNumber);
-            eventData->clickCount = CGEventGetIntegerValueField(event, kCGMouseEventClickState);
-            eventData->pressure = CGEventGetDoubleValueField(event, kCGMouseEventPressure);
+        // Add to queue safely
+        std::lock_guard<std::mutex> lock(queueMutex);
+        
+        // Prevent queue overflow
+        if (eventQueue.size() >= MAX_QUEUE_SIZE) {
+            eventQueue.pop(); // Remove oldest event
         }
         
-        // Extract scroll wheel data
-        eventData->hasScrollData = false;
-        if (eventType == kCGEventScrollWheel) {
-            eventData->hasScrollData = true;
-            eventData->deltaX = CGEventGetIntegerValueField(event, kCGScrollWheelEventDeltaAxis2);
-            eventData->deltaY = CGEventGetIntegerValueField(event, kCGScrollWheelEventDeltaAxis1);
-            eventData->deltaZ = CGEventGetIntegerValueField(event, kCGScrollWheelEventDeltaAxis3);
-            eventData->fixedPtDeltaY = CGEventGetIntegerValueField(event, kCGScrollWheelEventFixedPtDeltaAxis1);
+        // Add new event
+        SimpleEvent newEvent;
+        newEvent.eventName = eventName;
+        newEvent.x = eventX;
+        newEvent.y = eventY;
+        newEvent.timestamp = CFAbsoluteTimeGetCurrent();
+        newEvent.processId = eventProcessId;
+        newEvent.keyCode = eventKeyCode;
+        newEvent.hasKeyCode = hasKeyCode;
+        
+        eventQueue.push(newEvent);
+        
+        if (performanceConfig.enableVerboseLogging) {
+            std::cout << "[iohook-macos] Event queued: " << eventName 
+                      << " (Queue size: " << eventQueue.size() << ")" << std::endl;
         }
-        
-        // Extract additional mouse button data
-        eventData->hasOtherMouseData = false;
-        if (eventType == kCGEventOtherMouseDown || eventType == kCGEventOtherMouseUp || eventType == kCGEventOtherMouseDragged) {
-            eventData->hasOtherMouseData = true;
-            eventData->otherMouseButton = (uint32_t)CGEventGetIntegerValueField(event, kCGMouseEventButtonNumber);
-            
-            // Extract additional mouse properties
-            eventData->mouseSubtype = (uint32_t)CGEventGetIntegerValueField(event, kCGMouseEventSubtype);
-            
-            if (performanceConfig.enableVerboseLogging) {
-                std::cout << "[iohook-macos] Other mouse button: " << eventData->otherMouseButton 
-                          << " (Subtype: " << eventData->mouseSubtype << ")" << std::endl;
-            }
-        }
-        
-        // Extract tablet/stylus data
-        eventData->hasTabletData = false;
-        if (eventType == kCGEventTabletPointer || eventType == kCGEventTabletProximity) {
-            eventData->hasTabletData = true;
-            eventData->isTabletPointerEvent = (eventType == kCGEventTabletPointer);
-            eventData->isTabletProximityEvent = (eventType == kCGEventTabletProximity);
-            
-            if (eventType == kCGEventTabletPointer) {
-                // Use basic pressure field that's commonly available
-                eventData->tabletPressure = CGEventGetDoubleValueField(event, kCGMouseEventPressure);
-                
-                // For tilt and rotation, use placeholder values for now
-                eventData->tabletTiltX = 0.0;
-                eventData->tabletTiltY = 0.0; 
-                eventData->tabletRotation = 0.0;
-                eventData->tabletDeviceID = 0;
-                
-                if (performanceConfig.enableVerboseLogging) {
-                    std::cout << "[iohook-macos] Tablet pointer - Pressure: " << eventData->tabletPressure << std::endl;
-                }
-            } else if (eventType == kCGEventTabletProximity) {
-                eventData->tabletDeviceID = 0; // Placeholder
-                
-                if (performanceConfig.enableVerboseLogging) {
-                    std::cout << "[iohook-macos] Tablet proximity detected" << std::endl;
-                }
-            }
-        }
-        
-        // Send to JavaScript
-        auto callback = [](Napi::Env env, Napi::Function jsCallback, EventData* data) {
-            // Create comprehensive event data object
-            Napi::Object eventDataObj = Napi::Object::New(env);
-            
-            // Basic event info
-            eventDataObj.Set("type", Napi::String::New(env, data->eventName));
-            eventDataObj.Set("timestamp", Napi::Number::New(env, data->timestamp));
-            eventDataObj.Set("x", Napi::Number::New(env, data->x));
-            eventDataObj.Set("y", Napi::Number::New(env, data->y));
-            eventDataObj.Set("processId", Napi::Number::New(env, data->processId));
-            eventDataObj.Set("windowId", Napi::Number::New(env, 0)); // Placeholder
-            
-            // Add preventDefault method
-            auto preventDefaultCallback = [data](const Napi::CallbackInfo& info) -> Napi::Value {
-                data->isConsumed = true;
-                return info.Env().Undefined();
-            };
-            eventDataObj.Set("preventDefault", Napi::Function::New(env, preventDefaultCallback));
-            
-            // Keyboard-specific data
-            if (data->hasKeyCode) {
-                eventDataObj.Set("keyCode", Napi::Number::New(env, data->keyCode));
-                eventDataObj.Set("shiftKey", Napi::Boolean::New(env, data->shiftKey));
-                eventDataObj.Set("controlKey", Napi::Boolean::New(env, data->controlKey));
-                eventDataObj.Set("optionKey", Napi::Boolean::New(env, data->optionKey));
-                eventDataObj.Set("commandKey", Napi::Boolean::New(env, data->commandKey));
-                eventDataObj.Set("functionKey", Napi::Boolean::New(env, data->functionKey));
-                
-                // Set modifiers as a combined value for compatibility
-                uint32_t modifiers = 0;
-                if (data->shiftKey) modifiers |= 1;
-                if (data->controlKey) modifiers |= 2;
-                if (data->optionKey) modifiers |= 4;
-                if (data->commandKey) modifiers |= 8;
-                if (data->functionKey) modifiers |= 16;
-                eventDataObj.Set("modifiers", Napi::Number::New(env, modifiers));
-            }
-            
-            // Mouse-specific data
-            if (data->hasMouseData) {
-                eventDataObj.Set("button", Napi::Number::New(env, data->button));
-                eventDataObj.Set("clickCount", Napi::Number::New(env, data->clickCount));
-                eventDataObj.Set("pressure", Napi::Number::New(env, data->pressure));
-            }
-            
-            // Scroll wheel specific data
-            if (data->hasScrollData) {
-                eventDataObj.Set("deltaX", Napi::Number::New(env, data->deltaX));
-                eventDataObj.Set("deltaY", Napi::Number::New(env, data->deltaY));
-                eventDataObj.Set("deltaZ", Napi::Number::New(env, data->deltaZ));
-                eventDataObj.Set("fixedPtDeltaY", Napi::Number::New(env, data->fixedPtDeltaY));
-            }
-            
-            // Additional mouse button data
-            if (data->hasOtherMouseData) {
-                eventDataObj.Set("otherMouseButton", Napi::Number::New(env, data->otherMouseButton));
-                eventDataObj.Set("mouseSubtype", Napi::Number::New(env, data->mouseSubtype));
-            }
-            
-            // Tablet/stylus data
-            if (data->hasTabletData) {
-                Napi::Object tabletData = Napi::Object::New(env);
-                tabletData.Set("isPointerEvent", Napi::Boolean::New(env, data->isTabletPointerEvent));
-                tabletData.Set("isProximityEvent", Napi::Boolean::New(env, data->isTabletProximityEvent));
-                tabletData.Set("deviceID", Napi::Number::New(env, data->tabletDeviceID));
-                
-                if (data->isTabletPointerEvent) {
-                    tabletData.Set("pressure", Napi::Number::New(env, data->tabletPressure));
-                    tabletData.Set("tiltX", Napi::Number::New(env, data->tabletTiltX));
-                    tabletData.Set("tiltY", Napi::Number::New(env, data->tabletTiltY));
-                    tabletData.Set("rotation", Napi::Number::New(env, data->tabletRotation));
-                }
-                
-                eventDataObj.Set("tablet", tabletData);
-            }
-            
-            // Call JavaScript emit function
-            jsCallback.Call({
-                Napi::String::New(env, data->eventName),
-                eventDataObj
-            });
-            
-            if (performanceConfig.enableVerboseLogging) {
-                std::cout << "[iohook-macos] Event processed - Consumed: " << (data->isConsumed ? "YES" : "NO") 
-                          << ", Modified: " << (data->isModified ? "YES" : "NO") << std::endl;
-            }
-            
-            // Check if event data was modified by JavaScript
-            if (data->hasKeyCode) {
-                Napi::Value newKeyCode = eventDataObj.Get("keyCode");
-                if (newKeyCode.IsNumber() && newKeyCode.As<Napi::Number>().Uint32Value() != data->keyCode) {
-                    data->isModified = true;
-                    data->modifiedKeyCode = newKeyCode.As<Napi::Number>().Uint32Value();
-                }
-            }
-            
-            Napi::Value newX = eventDataObj.Get("x");
-            Napi::Value newY = eventDataObj.Get("y");
-            if (newX.IsNumber() && newX.As<Napi::Number>().DoubleValue() != data->x) {
-                data->isModified = true;
-                data->modifiedX = newX.As<Napi::Number>().DoubleValue();
-            }
-            if (newY.IsNumber() && newY.As<Napi::Number>().DoubleValue() != data->y) {
-                data->isModified = true;
-                data->modifiedY = newY.As<Napi::Number>().DoubleValue();
-            }
-            
-            // Clean up memory at the end of callback
-            delete data;
-        };
-        
-        // Store event data values before callback (since callback will delete eventData)
-        bool wasConsumed = false;
-        bool wasModified = false;
-        uint16_t modifiedKeyCode = 0;
-        double modifiedX = 0, modifiedY = 0;
-        bool hasKeyCode = eventData->hasKeyCode;
-        uint16_t originalKeyCode = eventData->keyCode;
-        double originalX = eventData->x;
-        double originalY = eventData->y;
-        
-        // Safely call JavaScript function with error handling
-        try {
-            emitFunction.BlockingCall(eventData, callback);
-            
-            // eventData is now deleted by callback, don't access it anymore
-            // Instead, we need to get the modified values from somewhere else
-            // For now, we'll disable modification/consumption until we fix the architecture
-            
-        } catch (const std::exception& e) {
-            if (performanceConfig.enableVerboseLogging) {
-                std::cout << "[iohook-macos] Error in JavaScript callback: " << e.what() << std::endl;
-            }
-            delete eventData; // Clean up on error
-            return event;
-        } catch (...) {
-            if (performanceConfig.enableVerboseLogging) {
-                std::cout << "[iohook-macos] Unknown error in JavaScript callback" << std::endl;
-            }
-            delete eventData; // Clean up on error
-            return event;
-        }
-        
-        // Since eventData is deleted, we can't check modification/consumption status
-        // This needs architectural changes to work properly
-        // For now, just return the original event
     }
     
     // Return the event unmodified (passthrough mode)
@@ -513,15 +284,15 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
 void* eventThreadFunction(void* arg) {
     std::cout << "[iohook-macos] Event thread started" << std::endl;
     
-    // Get the current run loop (this will be the run loop for this thread)
-    eventRunLoop = CFRunLoopGetCurrent();
+    // Get the current run loop for this thread
+    CFRunLoopRef eventRunLoop = CFRunLoopGetCurrent();
     
     // Add the event tap source to this thread's run loop
     CFRunLoopAddSource(eventRunLoop, runLoopSource, kCFRunLoopCommonModes);
     
     std::cout << "[iohook-macos] CFRunLoop source added to background thread" << std::endl;
     
-    // Run the event loop
+    // Run the event loop on this background thread
     while (!shouldStopThread) {
         // Run the run loop for a short time to allow for periodic checking
         CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, false);
@@ -537,25 +308,62 @@ void* eventThreadFunction(void* arg) {
     return NULL;
 }
 
-// Set JavaScript emit function
+// Get next event from queue (for JavaScript polling)
+Napi::Value GetNextEvent(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    
+    std::lock_guard<std::mutex> lock(queueMutex);
+    
+    if (eventQueue.empty()) {
+        return env.Null();
+    }
+    
+    // Get the oldest event
+    SimpleEvent event = eventQueue.front();
+    eventQueue.pop();
+    
+    // Create JavaScript object
+    Napi::Object eventObj = Napi::Object::New(env);
+    eventObj.Set("type", Napi::String::New(env, event.eventName));
+    eventObj.Set("x", Napi::Number::New(env, event.x));
+    eventObj.Set("y", Napi::Number::New(env, event.y));
+    eventObj.Set("timestamp", Napi::Number::New(env, event.timestamp));
+    eventObj.Set("processId", Napi::Number::New(env, event.processId));
+    
+    if (event.hasKeyCode) {
+        eventObj.Set("keyCode", Napi::Number::New(env, event.keyCode));
+    }
+    
+    return eventObj;
+}
+
+// Get queue size for monitoring
+Napi::Value GetQueueSize(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    
+    std::lock_guard<std::mutex> lock(queueMutex);
+    return Napi::Number::New(env, eventQueue.size());
+}
+
+// Clear event queue
+Napi::Value ClearQueue(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    
+    std::lock_guard<std::mutex> lock(queueMutex);
+    std::queue<SimpleEvent> empty;
+    std::swap(eventQueue, empty);
+    
+    std::cout << "[iohook-macos] Event queue cleared" << std::endl;
+    return env.Undefined();
+}
+
+// Set JavaScript emit function (legacy placeholder - not needed for polling)
 Napi::Value SetEmitFunction(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     
-    if (info.Length() < 1 || !info[0].IsFunction()) {
-        Napi::TypeError::New(env, "Expected a function as first argument").ThrowAsJavaScriptException();
-        return env.Undefined();
-    }
-    
-    // Create thread-safe function for calling JavaScript from C++
-    emitFunction = Napi::ThreadSafeFunction::New(
-        env,
-        info[0].As<Napi::Function>(),
-        "EventEmitter",
-        0,
-        1
-    );
-    
-    std::cout << "[iohook-macos] JavaScript emit function set successfully" << std::endl;
+    // For polling approach, this function is not needed
+    // Just return success for compatibility
+    std::cout << "[iohook-macos] JavaScript emit function set (polling mode - not used)" << std::endl;
     return env.Undefined();
 }
 
@@ -655,23 +463,24 @@ Napi::Value StopMonitoring(const Napi::CallbackInfo& info) {
     if (eventTap) {
         CGEventTapEnable(eventTap, false);
         CFRelease(eventTap);
-        eventTap = NULL;
     }
     
     if (runLoopSource) {
         CFRelease(runLoopSource);
-        runLoopSource = NULL;
     }
     
-    eventRunLoop = NULL;
+    eventTap = NULL;
+    runLoopSource = NULL;
     
-    // Release JavaScript emit function
-    if (emitFunction) {
-        emitFunction.Release();
+    // Clear event queue
+    {
+        std::lock_guard<std::mutex> lock(queueMutex);
+        std::queue<SimpleEvent> empty;
+        std::swap(eventQueue, empty);
     }
     
     isMonitoring = false;
-    std::cout << "[iohook-macos] Event monitoring stopped" << std::endl;
+    std::cout << "[iohook-macos] Event monitoring stopped successfully" << std::endl;
     
     return env.Undefined();
 }
@@ -842,19 +651,17 @@ Napi::Value DisablePerformanceMode(const Napi::CallbackInfo& info) {
 Napi::Value SetMouseMoveThrottling(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     
-    if (info.Length() < 2 || !info[0].IsBoolean() || !info[1].IsNumber()) {
-        Napi::TypeError::New(env, "Expected arguments: enabled (boolean), intervalMs (number)").ThrowAsJavaScriptException();
+    if (info.Length() < 1 || !info[0].IsNumber()) {
+        Napi::TypeError::New(env, "Expected argument: intervalMs (number)").ThrowAsJavaScriptException();
         return env.Undefined();
     }
     
-    bool enabled = info[0].As<Napi::Boolean>().Value();
-    double intervalMs = info[1].As<Napi::Number>().DoubleValue();
+    double intervalMs = info[0].As<Napi::Number>().DoubleValue();
     
-    performanceConfig.enableMouseMoveThrottling = enabled;
+    performanceConfig.enableMouseMoveThrottling = true;
     performanceConfig.mouseMoveThrottleInterval = intervalMs / 1000.0; // Convert ms to seconds
     
-    std::cout << "[iohook-macos] Mouse move throttling set - Enabled: " << (enabled ? "YES" : "NO")
-              << ", Interval: " << intervalMs << "ms" << std::endl;
+    std::cout << "[iohook-macos] Mouse move throttling enabled with interval: " << intervalMs << "ms" << std::endl;
     
     return env.Undefined();
 }
@@ -967,6 +774,12 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
                 Napi::Function::New(env, SetMouseMoveThrottling));
     exports.Set(Napi::String::New(env, "setVerboseLogging"), 
                 Napi::Function::New(env, SetVerboseLogging));
+    exports.Set(Napi::String::New(env, "getNextEvent"), 
+                Napi::Function::New(env, GetNextEvent));
+    exports.Set(Napi::String::New(env, "getQueueSize"), 
+                Napi::Function::New(env, GetQueueSize));
+    exports.Set(Napi::String::New(env, "clearQueue"), 
+                Napi::Function::New(env, ClearQueue));
     
     std::cout << "[iohook-macos] Native module initialized successfully" << std::endl;
     return exports;

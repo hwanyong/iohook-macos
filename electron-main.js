@@ -1,178 +1,200 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
-const path = require('path')
+const { app, BrowserWindow, ipcMain } = require('electron');
+const path = require('path');
 
-console.log('🚀 Electron main process started')
+let mainWindow;
+let iohook;
 
-let mainWindow
-let iohook
-
+// Create Electron window
 function createWindow() {
-    // 메인 윈도우 생성
+    console.log('🖼️  Electron window created');
+    
     mainWindow = new BrowserWindow({
-        width: 1000,
-        height: 700,
+        width: 1400,
+        height: 900,
         webPreferences: {
             nodeIntegration: true,
-            contextIsolation: false,
-            enableRemoteModule: true
-        }
-    })
+            contextIsolation: false
+        },
+        title: 'iohook-macos Electron Test (Polling Mode)'
+    });
 
-    // HTML 파일 로드
-    mainWindow.loadFile('electron-test.html')
-    
-    // DevTools 자동 열기
-    mainWindow.webContents.openDevTools()
-
-    console.log('🖼️  Electron window created')
+    mainWindow.loadFile('electron-test.html');
+    mainWindow.webContents.openDevTools();
 }
 
-// Electron 준비 완료 시
+// Initialize iohook with polling mode
+function initializeIOHook() {
+    try {
+        console.log('🔧 Loading iohook-macos library...');
+        iohook = require('./index.js');
+        console.log('✅ iohook-macos loaded successfully in Electron!');
+        
+        // Set up event listeners
+        iohook.on('keyDown', (data) => {
+            mainWindow.webContents.send('event-data', data);
+        });
+        
+        iohook.on('keyUp', (data) => {
+            mainWindow.webContents.send('event-data', data);
+        });
+        
+        iohook.on('leftMouseDown', (data) => {
+            mainWindow.webContents.send('event-data', data);
+        });
+        
+        iohook.on('leftMouseUp', (data) => {
+            mainWindow.webContents.send('event-data', data);
+        });
+        
+        iohook.on('rightMouseDown', (data) => {
+            mainWindow.webContents.send('event-data', data);
+        });
+        
+        iohook.on('rightMouseUp', (data) => {
+            mainWindow.webContents.send('event-data', data);
+        });
+        
+        iohook.on('mouseMoved', (data) => {
+            mainWindow.webContents.send('event-data', data);
+        });
+        
+        iohook.on('scrollWheel', (data) => {
+            mainWindow.webContents.send('event-data', data);
+        });
+        
+        // Check accessibility permissions
+        console.log('🔐 Checking accessibility permissions...');
+        const permissions = iohook.checkAccessibilityPermissions();
+        console.log('🔐 Accessibility permissions:', permissions.hasPermissions ? 'GRANTED' : 'DENIED');
+        
+        return true;
+    } catch (error) {
+        console.error('❌ Failed to initialize iohook:', error);
+        return false;
+    }
+}
+
+// IPC Handlers for polling mode
+ipcMain.on('start-monitoring', (event) => {
+    try {
+        console.log('🎯 Starting iohook monitoring in Electron...');
+        iohook.startMonitoring();
+        console.log('✅ iohook monitoring started successfully in Electron!');
+    } catch (error) {
+        console.error('❌ Failed to start monitoring:', error);
+    }
+});
+
+ipcMain.on('stop-monitoring', (event) => {
+    try {
+        console.log('🛑 Stopping iohook monitoring...');
+        iohook.stopMonitoring();
+        console.log('✅ iohook monitoring stopped successfully');
+    } catch (error) {
+        console.error('❌ Failed to stop monitoring:', error);
+    }
+});
+
+ipcMain.on('get-queue-size', (event) => {
+    try {
+        const size = iohook.getQueueSize();
+        event.reply('queue-size', size);
+    } catch (error) {
+        console.error('❌ Failed to get queue size:', error);
+        event.reply('queue-size', 0);
+    }
+});
+
+ipcMain.on('clear-queue', (event) => {
+    try {
+        iohook.clearQueue();
+        console.log('🗑️ Event queue cleared');
+    } catch (error) {
+        console.error('❌ Failed to clear queue:', error);
+    }
+});
+
+ipcMain.on('set-polling-rate', (event, rate) => {
+    try {
+        iohook.setPollingRate(rate);
+        console.log(`⚡ Polling rate set to ${rate}ms`);
+    } catch (error) {
+        console.error('❌ Failed to set polling rate:', error);
+    }
+});
+
+ipcMain.on('enable-performance-mode', (event) => {
+    try {
+        iohook.enablePerformanceMode();
+        console.log('🚀 Performance mode enabled');
+    } catch (error) {
+        console.error('❌ Failed to enable performance mode:', error);
+    }
+});
+
+ipcMain.on('disable-performance-mode', (event) => {
+    try {
+        iohook.disablePerformanceMode();
+        console.log('🐌 Performance mode disabled');
+    } catch (error) {
+        console.error('❌ Failed to disable performance mode:', error);
+    }
+});
+
+ipcMain.on('set-verbose-logging', (event, enable) => {
+    try {
+        iohook.setVerboseLogging(enable);
+        console.log(`📝 Verbose logging ${enable ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+        console.error('❌ Failed to set verbose logging:', error);
+    }
+});
+
+// Electron app events
 app.whenReady().then(() => {
-    console.log('⚡ Electron app ready')
-    createWindow()
+    console.log('🚀 Electron main process started');
+    console.log('⚡ Electron app ready');
     
-    // macOS에서 앱이 활성화될 때 윈도우 생성
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow()
-    })
+    createWindow();
     
-    // iohook 라이브러리 테스트
-    testIOHook()
-})
+    // Initialize iohook after window is created
+    if (initializeIOHook()) {
+        console.log('🎉 iohook-macos initialization completed');
+    } else {
+        console.error('💥 iohook-macos initialization failed');
+    }
+});
 
-// 모든 윈도우가 닫힐 때
 app.on('window-all-closed', () => {
-    console.log('🔄 All windows closed')
+    console.log('🔚 All windows closed');
     
-    // iohook 정리
-    if (iohook && iohook.isMonitoring()) {
-        console.log('🛑 Stopping iohook monitoring...')
-        iohook.stopMonitoring()
+    // Stop monitoring before quitting
+    if (iohook) {
+        try {
+            iohook.stopMonitoring();
+            console.log('✅ iohook monitoring stopped on quit');
+        } catch (error) {
+            console.error('❌ Error stopping monitoring on quit:', error);
+        }
     }
     
-    // macOS가 아닌 경우 앱 종료
-    if (process.platform !== 'darwin') app.quit()
-})
-
-// iohook 라이브러리 테스트 함수
-function testIOHook() {
-    try {
-        console.log('🔧 Loading iohook-macos library...')
-        iohook = require('./index.js')
-        
-        console.log('✅ iohook-macos loaded successfully in Electron!')
-        
-        // 이벤트 리스너 설정
-        iohook.on('keyDown', (eventData) => {
-            console.log('⌨️  [Electron] Key pressed:', eventData.keyCode)
-            
-            // 렌더러 프로세스로 이벤트 전송
-            if (mainWindow && mainWindow.webContents) {
-                mainWindow.webContents.send('iohook-event', {
-                    type: 'keyDown',
-                    data: eventData
-                })
-            }
-        })
-        
-        iohook.on('leftMouseDown', (eventData) => {
-            console.log('🖱️  [Electron] Mouse clicked at:', eventData.x, eventData.y)
-            
-            // 렌더러 프로세스로 이벤트 전송
-            if (mainWindow && mainWindow.webContents) {
-                mainWindow.webContents.send('iohook-event', {
-                    type: 'leftMouseDown',
-                    data: eventData
-                })
-            }
-        })
-        
-        iohook.on('mouseMoved', (eventData) => {
-            // 마우스 이동은 너무 많으므로 10번째만 로깅
-            if (Math.random() < 0.01) {
-                console.log('🖱️  [Electron] Mouse moved to:', eventData.x, eventData.y)
-            }
-            
-            // 렌더러 프로세스로 이벤트 전송 (성능을 위해 throttle)
-            if (mainWindow && mainWindow.webContents && Math.random() < 0.05) {
-                mainWindow.webContents.send('iohook-event', {
-                    type: 'mouseMoved',
-                    data: eventData
-                })
-            }
-        })
-        
-        // 권한 체크
-        console.log('🔐 Checking accessibility permissions...')
-        const hasPermissions = iohook.checkAccessibilityPermissions()
-        console.log('🔐 Accessibility permissions:', hasPermissions ? 'GRANTED' : 'DENIED')
-        
-        if (!hasPermissions) {
-            console.log('⚠️  Accessibility permissions required. Opening System Preferences...')
-            iohook.requestAccessibilityPermissions()
-            
-            // 5초 후 다시 시도
-            setTimeout(() => {
-                const hasPermissionsAfter = iohook.checkAccessibilityPermissions()
-                if (hasPermissionsAfter) {
-                    startMonitoring()
-                } else {
-                    console.log('❌ Please grant accessibility permissions and restart the app')
-                }
-            }, 5000)
-        } else {
-            startMonitoring()
-        }
-        
-    } catch (error) {
-        console.error('❌ Failed to load iohook-macos in Electron:', error)
-        console.error('Error details:', error.message)
-        console.error('Stack trace:', error.stack)
+    if (process.platform !== 'darwin') {
+        app.quit();
     }
-}
+});
 
-function startMonitoring() {
-    try {
-        console.log('🎯 Starting iohook monitoring in Electron...')
-        iohook.startMonitoring()
-        console.log('✅ iohook monitoring started successfully in Electron!')
-        
-        // 렌더러 프로세스에 상태 알림
-        if (mainWindow && mainWindow.webContents) {
-            mainWindow.webContents.send('iohook-status', {
-                status: 'started',
-                message: 'Event monitoring started successfully!'
-            })
-        }
-        
-    } catch (error) {
-        console.error('❌ Failed to start monitoring:', error)
-        
-        // 렌더러 프로세스에 에러 알림
-        if (mainWindow && mainWindow.webContents) {
-            mainWindow.webContents.send('iohook-status', {
-                status: 'error',
-                message: error.message
-            })
-        }
+app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
     }
-}
+});
 
-// 렌더러 프로세스로부터의 요청 처리
-ipcMain.handle('iohook-test-performance', async () => {
-    if (iohook) {
-        console.log('🚀 Testing performance mode...')
-        iohook.enablePerformanceMode()
-        return { success: true, message: 'Performance mode enabled' }
-    }
-    return { success: false, message: 'iohook not loaded' }
-})
+process.on('uncaughtException', (error) => {
+    console.error('💥 Uncaught Exception:', error);
+});
 
-ipcMain.handle('iohook-test-hardware', async () => {
-    if (iohook) {
-        console.log('🖱️  Hardware control features are ready')
-        return { success: true, message: 'Hardware control ready' }
-    }
-    return { success: false, message: 'iohook not loaded' }
-}) 
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+console.log('📋 Electron main process script loaded'); 
