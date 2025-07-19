@@ -212,6 +212,62 @@ class MacOSEventHook extends EventEmitter {
             throw error
         }
     }
+
+    /**
+     * Enables performance mode for high-frequency event handling
+     * Reduces logging, enables mouse move throttling, optimizes memory usage
+     */
+    enablePerformanceMode() {
+        try {
+            nativeModule.enablePerformanceMode()
+            console.log('[iohook-macos] JavaScript: Performance mode enabled - Optimized for high-frequency events')
+        } catch (error) {
+            console.error('[iohook-macos] JavaScript: enablePerformanceMode failed:', error.message)
+            throw error
+        }
+    }
+
+    /**
+     * Disables performance mode and restores full event logging and processing
+     */
+    disablePerformanceMode() {
+        try {
+            nativeModule.disablePerformanceMode()
+            console.log('[iohook-macos] JavaScript: Performance mode disabled - Full event logging restored')
+        } catch (error) {
+            console.error('[iohook-macos] JavaScript: disablePerformanceMode failed:', error.message)
+            throw error
+        }
+    }
+
+    /**
+     * Configures mouse move event throttling to reduce event frequency
+     * @param {boolean} enabled - Enable/disable mouse move throttling
+     * @param {number} intervalMs - Minimum interval between mouse move events in milliseconds (default: 16ms = ~60fps)
+     */
+    setMouseMoveThrottling(enabled, intervalMs = 16) {
+        try {
+            nativeModule.setMouseMoveThrottling(enabled, intervalMs)
+            console.log(`[iohook-macos] JavaScript: Mouse move throttling set - Enabled: ${enabled}, Interval: ${intervalMs}ms`)
+        } catch (error) {
+            console.error('[iohook-macos] JavaScript: setMouseMoveThrottling failed:', error.message)
+            throw error
+        }
+    }
+
+    /**
+     * Controls verbose logging level for debugging and performance
+     * @param {boolean} enabled - Enable/disable verbose console logging
+     */
+    setVerboseLogging(enabled) {
+        try {
+            nativeModule.setVerboseLogging(enabled)
+            console.log(`[iohook-macos] JavaScript: Verbose logging ${enabled ? 'enabled' : 'disabled'}`)
+        } catch (error) {
+            console.error('[iohook-macos] JavaScript: setVerboseLogging failed:', error.message)
+            throw error
+        }
+    }
 }
 
 // Export singleton instance

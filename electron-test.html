@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iohook-macos Electron Compatibility Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin: 10px 0;
+        }
+
+        .status-panel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-panel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-panel h3 {
+            margin-top: 0;
+            color: #fff;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .event-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .event-panel {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+        }
+
+        .event-panel h4 {
+            margin-top: 0;
+            color: #fff;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .event-log {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .event-item {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .event-item:last-child {
+            border-bottom: none;
+        }
+
+        .event-type {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .button {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+            font-size: 14px;
+        }
+
+        .button:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-active {
+            background: #4CAF50;
+            box-shadow: 0 0 10px #4CAF50;
+        }
+
+        .status-inactive {
+            background: #f44336;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 iohook-macos Electron Test</h1>
+            <p>Testing macOS Event Hook Library in Electron Environment</p>
+        </div>
+
+        <div class="status-panel">
+            <h3>
+                <span id="status-indicator" class="status-indicator status-inactive"></span>
+                Status: <span id="status-text">Initializing...</span>
+            </h3>
+            <p id="status-message">Loading iohook-macos library...</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-panel">
+                <h3>🎮 Controls</h3>
+                <button class="button" onclick="testPerformanceMode()">🚀 Test Performance Mode</button>
+                <button class="button" onclick="testHardwareControl()">🖱️  Test Hardware Control</button>
+                <button class="button" onclick="clearLogs()">🗑️ Clear Logs</button>
+                <button class="button" onclick="exportLogs()">📁 Export Logs</button>
+            </div>
+
+            <div class="control-panel">
+                <h3>📊 Event Statistics</h3>
+                <div class="stats">
+                    <div class="stat-item">
+                        <span id="key-count" class="stat-number">0</span>
+                        <span class="stat-label">Key Events</span>
+                    </div>
+                    <div class="stat-item">
+                        <span id="mouse-count" class="stat-number">0</span>
+                        <span class="stat-label">Mouse Events</span>
+                    </div>
+                    <div class="stat-item">
+                        <span id="move-count" class="stat-number">0</span>
+                        <span class="stat-label">Mouse Moves</span>
+                    </div>
+                    <div class="stat-item">
+                        <span id="total-count" class="stat-number">0</span>
+                        <span class="stat-label">Total Events</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="event-display">
+            <div class="event-panel">
+                <h4>⌨️ Keyboard Events</h4>
+                <div id="keyboard-log" class="event-log"></div>
+            </div>
+
+            <div class="event-panel">
+                <h4>🖱️ Mouse Events</h4>
+                <div id="mouse-log" class="event-log"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron')
+
+        // Event counters
+        let keyCount = 0
+        let mouseCount = 0
+        let moveCount = 0
+        let totalCount = 0
+
+        // Log arrays
+        let keyboardEvents = []
+        let mouseEvents = []
+
+        // Status updates from main process
+        ipcRenderer.on('iohook-status', (event, data) => {
+            console.log('📨 Status update:', data)
+            updateStatus(data.status, data.message)
+        })
+
+        // Event data from main process
+        ipcRenderer.on('iohook-event', (event, data) => {
+            handleEvent(data.type, data.data)
+        })
+
+        function updateStatus(status, message) {
+            const indicator = document.getElementById('status-indicator')
+            const statusText = document.getElementById('status-text')
+            const statusMessage = document.getElementById('status-message')
+
+            if (status === 'started') {
+                indicator.className = 'status-indicator status-active'
+                statusText.textContent = 'Active'
+                statusMessage.textContent = message
+            } else if (status === 'error') {
+                indicator.className = 'status-indicator status-inactive'
+                statusText.textContent = 'Error'
+                statusMessage.textContent = message
+            } else {
+                indicator.className = 'status-indicator status-inactive'
+                statusText.textContent = 'Inactive'
+                statusMessage.textContent = message
+            }
+        }
+
+        function handleEvent(type, data) {
+            totalCount++
+            
+            if (type === 'keyDown') {
+                keyCount++
+                addKeyboardEvent(data)
+            } else if (type === 'leftMouseDown') {
+                mouseCount++
+                addMouseEvent('Click', data)
+            } else if (type === 'mouseMoved') {
+                moveCount++
+                addMouseEvent('Move', data)
+            }
+
+            updateStatistics()
+        }
+
+        function addKeyboardEvent(data) {
+            const timestamp = new Date().toLocaleTimeString()
+            const eventText = `[${timestamp}] Key: ${data.keyCode} | Modifiers: ${data.modifiers || 'None'}`
+            
+            keyboardEvents.unshift(eventText)
+            if (keyboardEvents.length > 100) keyboardEvents.pop()
+
+            const logElement = document.getElementById('keyboard-log')
+            logElement.innerHTML = keyboardEvents.map(event => 
+                `<div class="event-item"><span class="event-type">KEY:</span> ${event}</div>`
+            ).join('')
+        }
+
+        function addMouseEvent(eventType, data) {
+            const timestamp = new Date().toLocaleTimeString()
+            const eventText = `[${timestamp}] ${eventType}: (${data.x}, ${data.y}) | Process: ${data.processId || 'Unknown'}`
+            
+            mouseEvents.unshift(eventText)
+            if (mouseEvents.length > 100) mouseEvents.pop()
+
+            const logElement = document.getElementById('mouse-log')
+            logElement.innerHTML = mouseEvents.map(event => 
+                `<div class="event-item"><span class="event-type">MOUSE:</span> ${event}</div>`
+            ).join('')
+        }
+
+        function updateStatistics() {
+            document.getElementById('key-count').textContent = keyCount
+            document.getElementById('mouse-count').textContent = mouseCount
+            document.getElementById('move-count').textContent = moveCount
+            document.getElementById('total-count').textContent = totalCount
+        }
+
+        async function testPerformanceMode() {
+            try {
+                const result = await ipcRenderer.invoke('iohook-test-performance')
+                console.log('🚀 Performance test result:', result)
+                alert(`Performance Mode Test: ${result.message}`)
+            } catch (error) {
+                console.error('❌ Performance test failed:', error)
+                alert(`Performance test failed: ${error.message}`)
+            }
+        }
+
+        async function testHardwareControl() {
+            try {
+                const result = await ipcRenderer.invoke('iohook-test-hardware')
+                console.log('🖱️  Hardware test result:', result)
+                alert(`Hardware Control Test: ${result.message}`)
+            } catch (error) {
+                console.error('❌ Hardware test failed:', error)
+                alert(`Hardware test failed: ${error.message}`)
+            }
+        }
+
+        function clearLogs() {
+            keyboardEvents = []
+            mouseEvents = []
+            keyCount = 0
+            mouseCount = 0
+            moveCount = 0
+            totalCount = 0
+            
+            document.getElementById('keyboard-log').innerHTML = ''
+            document.getElementById('mouse-log').innerHTML = ''
+            updateStatistics()
+        }
+
+        function exportLogs() {
+            const logs = {
+                timestamp: new Date().toISOString(),
+                statistics: { keyCount, mouseCount, moveCount, totalCount },
+                keyboardEvents: keyboardEvents,
+                mouseEvents: mouseEvents
+            }
+            
+            const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `iohook-electron-test-${Date.now()}.json`
+            a.click()
+            URL.revokeObjectURL(url)
+        }
+
+        // 초기화 완료 알림
+        console.log('🌐 Electron renderer process initialized')
+        updateStatus('initializing', 'Waiting for main process...')
+    </script>
+</body>
+</html> 

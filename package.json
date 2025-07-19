@@ -6,7 +6,11 @@
   "scripts": {
     "install": "node-gyp rebuild",
     "rebuild": "node-gyp rebuild",
-    "test": "node test.js"
+    "test": "node test.js",
+    "electron": "electron electron-main.js",
+    "electron-rebuild": "electron-rebuild",
+    "electron-test": "npm run electron-rebuild && npm run electron",
+    "electron-dev": "electron electron-main.js --enable-logging"
   },
   "keywords": [
     "macos",
