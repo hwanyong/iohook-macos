@@ -10,6 +10,30 @@
 
 High-performance macOS system event hook library for Electron applications with **full TypeScript support**.
 
+## 🤖 AI-Enhanced Documentation
+
+This library includes comprehensive AI-optimized documentation to help AI assistants understand and implement the library effectively. These specialized guides are designed to provide AI with contextual usage patterns and best practices.
+
+### Available AI Usage Guides
+
+- **[CommonJS Guide (English)](docs/ai-usage-guide.commonjs.en.prompt.md)** - Complete CommonJS patterns and implementations
+- **[CommonJS Guide (한국어)](docs/ai-usage-guide.commonjs.ko.prompt.md)** - CommonJS 패턴 및 구현 가이드
+- **[ESM Guide (English)](docs/ai-usage-guide.esm.en.prompt.md)** - Modern ES Module syntax and patterns
+- **[ESM Guide (한국어)](docs/ai-usage-guide.esm.ko.prompt.md)** - 최신 ES 모듈 문법 및 패턴
+- **[TypeScript Guide (English)](docs/ai-usage-guide.typescript.en.prompt.md)** - Type-safe implementations and patterns
+- **[TypeScript Guide (한국어)](docs/ai-usage-guide.typescript.ko.prompt.md)** - 타입 안전한 구현 및 패턴
+- **[Development Document](docs/prd/macos_event_hook_library_dev_document.md)** - Technical specifications and architecture
+
+These guides enable AI assistants to provide accurate, context-aware assistance for implementing system event hooks in macOS applications.
+
+## 🎯 Why iohook-macos?
+
+Traditional macOS event hooking solutions often suffer from fragmentation and complexity, requiring developers to integrate multiple disparate libraries, manage complex native dependencies, and navigate inconsistent APIs across different event types. This fragmented ecosystem leads to increased development overhead, maintenance burden, and potential compatibility issues.
+
+**iohook-macos** addresses these challenges by providing a **unified, comprehensive solution** that consolidates all system-level event monitoring capabilities into a single, well-designed library. Our approach eliminates the need for multiple dependencies while delivering enterprise-grade performance, complete TypeScript integration, and intuitive APIs that abstract away the underlying complexity of macOS Core Graphics Event Services.
+
+By offering a cohesive development experience with consistent patterns across keyboard, mouse, and scroll event handling, developers can focus on building features rather than wrestling with infrastructure concerns.
+
 ## 🎯 Features
 
 - **🎹 Keyboard Events**: `keyDown`, `keyUp`, `flagsChanged`

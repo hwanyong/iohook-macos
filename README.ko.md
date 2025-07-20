@@ -10,6 +10,30 @@
 
 **완전한 TypeScript 지원**을 제공하는 Electron 애플리케이션용 고성능 macOS 시스템 이벤트 후킹 라이브러리입니다.
 
+## 🤖 AI 지원 문서
+
+이 라이브러리는 AI 어시스턴트가 라이브러리를 효과적으로 이해하고 구현할 수 있도록 돕는 포괄적인 AI 최적화 문서를 포함하고 있습니다. 이러한 전문 가이드는 AI에게 맥락적 사용 패턴과 모범 사례를 제공하도록 설계되었습니다.
+
+### 사용 가능한 AI 사용 가이드
+
+- **[CommonJS 가이드 (English)](docs/ai-usage-guide.commonjs.en.prompt.md)** - 완전한 CommonJS 패턴 및 구현
+- **[CommonJS 가이드 (한국어)](docs/ai-usage-guide.commonjs.ko.prompt.md)** - CommonJS 패턴 및 구현 가이드
+- **[ESM 가이드 (English)](docs/ai-usage-guide.esm.en.prompt.md)** - 최신 ES 모듈 문법 및 패턴
+- **[ESM 가이드 (한국어)](docs/ai-usage-guide.esm.ko.prompt.md)** - 최신 ES 모듈 문법 및 패턴
+- **[TypeScript 가이드 (English)](docs/ai-usage-guide.typescript.en.prompt.md)** - 타입 안전한 구현 및 패턴
+- **[TypeScript 가이드 (한국어)](docs/ai-usage-guide.typescript.ko.prompt.md)** - 타입 안전한 구현 및 패턴
+- **[개발 문서](docs/prd/macos_event_hook_library_dev_document.md)** - 기술 명세 및 아키텍처
+
+이러한 가이드는 AI 어시스턴트가 macOS 애플리케이션에서 시스템 이벤트 후킹을 구현하는 데 정확하고 맥락적인 지원을 제공할 수 있게 합니다.
+
+## 🎯 왜 iohook-macos인가?
+
+기존의 macOS 이벤트 후킹 솔루션들은 종종 분산화와 복잡성 문제로 어려움을 겪고 있습니다. 개발자들은 여러 개의 서로 다른 라이브러리를 통합하고, 복잡한 네이티브 의존성을 관리하며, 이벤트 타입별로 일관성 없는 API를 다뤄야 했습니다. 이러한 분산된 생태계는 개발 오버헤드 증가, 유지보수 부담, 그리고 잠재적인 호환성 문제로 이어집니다.
+
+**iohook-macos**는 이러한 문제들을 **통합되고 포괄적인 솔루션**을 제공함으로써 해결합니다. 모든 시스템 레벨 이벤트 모니터링 기능을 하나의 잘 설계된 라이브러리로 통합하여, 여러 의존성의 필요성을 제거하면서도 엔터프라이즈급 성능, 완전한 TypeScript 통합, 그리고 macOS Core Graphics Event Services의 근본적인 복잡성을 추상화하는 직관적인 API를 제공합니다.
+
+키보드, 마우스, 스크롤 이벤트 처리에서 일관된 패턴을 제공하는 통합된 개발 경험을 통해, 개발자들은 인프라 구조적 문제와 씨름하는 대신 기능 구축에 집중할 수 있습니다.
+
 ## 🎯 기능
 
 - **🎹 키보드 이벤트**: `keyDown`, `keyUp`, `flagsChanged`
