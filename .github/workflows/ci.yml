@@ -23,11 +23,20 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     
+    - name: Install system dependencies
+      run: |
+        # Ensure Xcode Command Line Tools are available
+        xcode-select --install 2>/dev/null || true
+        xcode-select --print-path
+    
     - name: Install dependencies
       run: npm ci
     
-    - name: Run tests
+    - name: Run CI tests
       run: npm test
+      
+    - name: Run basic functionality test
+      run: npm run test-basic || echo "Basic test failed (expected in CI without accessibility permissions)"
     
     - name: Build TypeScript example
       run: npm run typescript-compile
@@ -45,6 +54,12 @@ jobs:
         node-version: 18
         cache: 'npm'
     
+    - name: Install system dependencies
+      run: |
+        # Ensure Xcode Command Line Tools are available
+        xcode-select --install 2>/dev/null || true
+        xcode-select --print-path
+    
     - name: Install dependencies
       run: npm ci
     
@@ -52,4 +67,10 @@ jobs:
       run: npm run rebuild
       
     - name: Test native module
-      run: npm test 
+      run: npm test
+      
+    - name: Verify binary exists
+      run: |
+        echo "Checking for native binary..."
+        find . -name "*.node" -type f
+        ls -la bin/ || echo "No bin directory" 

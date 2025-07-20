@@ -14,9 +14,10 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "install": "node-gyp rebuild",
+    "install": "node-gyp-build",
     "rebuild": "node-gyp rebuild",
-    "test": "node examples/test/test.js",
+    "test": "node examples/test/test-ci.js",
+    "test-basic": "node examples/test/test.js",
     "test-permissions": "node examples/test/test-permissions.js",
     "test-comprehensive": "node examples/test/test-comprehensive.js",
     "test-performance": "node examples/test/test-performance.js",
@@ -66,11 +67,11 @@
     "node-gyp-build": "^4.6.0"
   },
   "devDependencies": {
-    "electron": "^27.0.0",
-    "electron-rebuild": "^3.2.9",
+    "@electron/rebuild": "^4.0.1",
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
-    "ts-node": "^10.9.0"
+    "electron": "^27.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
   },
   "gypfile": true
 }

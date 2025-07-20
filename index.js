@@ -2,7 +2,22 @@ const EventEmitter = require('events');
 const path = require('path');
 
 // Load the native module using node-gyp-build for better binary distribution
-const nativeModule = require('node-gyp-build')(path.join(__dirname));
+let nativeModule;
+try {
+    nativeModule = require('node-gyp-build')(path.join(__dirname));
+    console.log('[iohook-macos] Native module loaded successfully via node-gyp-build');
+} catch (buildError) {
+    console.log('[iohook-macos] node-gyp-build failed, trying fallback paths...');
+    try {
+        // Fallback to direct path
+        nativeModule = require('./build/Release/iohook-macos.node');
+        console.log('[iohook-macos] Native module loaded via fallback path');
+    } catch (fallbackError) {
+        console.error('[iohook-macos] Failed to load native module:', buildError.message);
+        console.error('[iohook-macos] Fallback also failed:', fallbackError.message);
+        throw new Error('Native module could not be loaded. Please run: npm run rebuild');
+    }
+}
 
 // CGEventType to String mapping table
 const CGEventTypes = {

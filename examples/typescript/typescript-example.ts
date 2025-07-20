@@ -1,5 +1,5 @@
 // TypeScript usage example for iohook-macos
-import * as iohook from '../../index'
+import iohook from '../../index'
 import type { EventData, AccessibilityPermissionsResult, EventFilterOptions } from '../../index'
 
 // Type-safe event handling example

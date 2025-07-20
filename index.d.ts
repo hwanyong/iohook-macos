@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events'
 
 // CGEventType to String mapping (from index.js)
-export interface CGEventTypesMap {
+interface CGEventTypesMap {
   readonly 0: "null"
   readonly 1: "leftMouseDown"
   readonly 2: "leftMouseUp"
@@ -22,7 +22,7 @@ export interface CGEventTypesMap {
 }
 
 // Reverse mapping (string to int)
-export interface EventTypeToIntMap {
+interface EventTypeToIntMap {
   readonly null: 0
   readonly leftMouseDown: 1
   readonly leftMouseUp: 2
@@ -43,7 +43,7 @@ export interface EventTypeToIntMap {
 }
 
 // Event data structure from native module
-export interface EventData {
+interface EventData {
   /** CGEventType integer value */
   type: number
   /** X coordinate (for mouse events) */
@@ -52,31 +52,31 @@ export interface EventData {
   y?: number
   /** Event timestamp */
   timestamp: number
-  /** Process ID of the event source */
+  /** Process ID that generated the event */
   processId?: number
   /** Key code (for keyboard events) */
   keyCode?: number
-  /** Whether keyCode is available */
+  /** Whether keyCode property is available */
   hasKeyCode?: boolean
 }
 
-// Accessibility permissions result
-export interface AccessibilityPermissionsResult {
+// Accessibility permissions check result
+interface AccessibilityPermissionsResult {
   /** Whether accessibility permissions are granted */
   hasPermissions: boolean
   /** Descriptive message about permission status */
   message: string
 }
 
-// Event filter configuration options
-export interface EventFilterOptions {
-  /** Enable process ID filtering */
+// Event filtering options
+interface EventFilterOptions {
+  /** Enable filtering by process ID */
   filterByProcessId?: boolean
-  /** Exclude (true) or include only (false) the target process */
+  /** Whether to exclude (true) or include (false) the target process ID */
   excludeProcessId?: boolean
   /** Target process ID for filtering */
   targetProcessId?: number
-  /** Enable coordinate range filtering */
+  /** Enable filtering by screen coordinates */
   filterByCoordinates?: boolean
   /** Minimum X coordinate */
   minX?: number
@@ -86,7 +86,7 @@ export interface EventFilterOptions {
   minY?: number
   /** Maximum Y coordinate */
   maxY?: number
-  /** Enable event type filtering */
+  /** Enable filtering by event type */
   filterByEventType?: boolean
   /** Allow keyboard events */
   allowKeyboard?: boolean
@@ -96,8 +96,8 @@ export interface EventFilterOptions {
   allowScroll?: boolean
 }
 
-// Event type literals for better type safety
-export type CGEventTypeString = 
+// Supported event names (string-based)
+type EventNames = 
   | "null"
   | "leftMouseDown"
   | "leftMouseUp"
@@ -116,10 +116,14 @@ export type CGEventTypeString =
   | "otherMouseUp"
   | "otherMouseDragged"
 
-export type CGEventTypeNumber = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 10 | 11 | 12 | 22 | 23 | 24 | 25 | 26 | 27
+type CGEventTypeNumber = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 10 | 11 | 12 | 22 | 23 | 24 | 25 | 26 | 27
 
 // Main MacOSEventHook class interface
-export interface MacOSEventHook extends EventEmitter {
+interface MacOSEventHook extends Omit<EventEmitter, 'emit' | 'on'> {
+  // Custom emit and on methods to support both string and number event names
+  emit(eventName: string | number, ...args: any[]): boolean
+  on(eventName: string | number | 'event', listener: (data: EventData) => void): this
+  
   // Static getters
   readonly CGEventTypes: CGEventTypesMap
   readonly EventTypeToInt: EventTypeToIntMap
@@ -138,68 +142,61 @@ export interface MacOSEventHook extends EventEmitter {
   
   /**
    * Check if monitoring is currently active
+   * @returns true if monitoring is active, false otherwise
    */
   isMonitoring(): boolean
   
-  // Polling control methods
-  /**
-   * Set polling rate in milliseconds
-   * @param ms Polling interval (minimum 1ms)
-   */
-  setPollingRate(ms: number): void
-  
-  /**
-   * Start event polling manually
-   */
-  startPolling(): void
-  
-  /**
-   * Stop event polling manually
-   */
-  stopPolling(): void
-  
-  // Queue management
-  /**
-   * Get current event queue size
-   */
-  getQueueSize(): number
-  
-  /**
-   * Clear all events from the queue
-   */
-  clearQueue(): void
-  
-  /**
-   * Get next event from queue manually
-   * @returns Event data or null if queue is empty
-   */
-  getNextEvent(): EventData | null
-  
-  // Permission methods
+  // Permission management
   /**
    * Check accessibility permissions status
+   * @returns Object with permission status and message
    */
   checkAccessibilityPermissions(): AccessibilityPermissionsResult
   
   /**
-   * Request accessibility permissions (shows system dialog)
+   * Request accessibility permissions (opens system dialog)
+   * @returns Object with permission status and message
    */
   requestAccessibilityPermissions(): AccessibilityPermissionsResult
   
-  // Performance control
+  // Polling and queue management
   /**
-   * Enable performance mode for high-frequency events
+   * Set the polling rate for event checking
+   * @param ms Polling interval in milliseconds (minimum 1)
+   */
+  setPollingRate(ms: number): void
+  
+  /**
+   * Get current event queue size
+   * @returns Number of events in queue
+   */
+  getQueueSize(): number
+  
+  /**
+   * Clear the event queue
+   */
+  clearQueue(): void
+  
+  /**
+   * Get next event from queue (manual polling)
+   * @returns Event data or null if queue is empty
+   */
+  getNextEvent(): EventData | null
+  
+  // Performance controls
+  /**
+   * Enable performance mode (reduced logging)
    */
   enablePerformanceMode(): void
   
   /**
-   * Disable performance mode
+   * Disable performance mode (full logging)
    */
   disablePerformanceMode(): void
   
   /**
-   * Set mouse move throttling interval
-   * @param intervalMs Throttling interval in milliseconds
+   * Set mouse move event throttling
+   * @param intervalMs Minimum interval between mouse move events in milliseconds
    */
   setMouseMoveThrottling(intervalMs: number): void
   
@@ -211,8 +208,8 @@ export interface MacOSEventHook extends EventEmitter {
   
   // Event filtering
   /**
-   * Set event filter options
-   * @param options Filter configuration
+   * Set event filtering options
+   * @param options Filtering configuration
    */
   setEventFilter(options: EventFilterOptions): void
   
@@ -221,88 +218,20 @@ export interface MacOSEventHook extends EventEmitter {
    */
   clearEventFilter(): void
   
-  // Event modification (optional feature)
+  // Event modification (advanced)
   /**
-   * Enable event modification and consumption
+   * Enable event modification capabilities
    */
   enableEventModification(): void
   
   /**
-   * Disable event modification and consumption
+   * Disable event modification capabilities
    */
   disableEventModification(): void
-  
-  // Native module compatibility methods
-  /**
-   * Set process filter (legacy method)
-   * @param processId Target process ID
-   * @param exclude Whether to exclude or include only this process
-   */
-  setProcessFilter(processId: number, exclude: boolean): void
-  
-  /**
-   * Set coordinate range filter (legacy method)
-   * @param minX Minimum X coordinate
-   * @param maxX Maximum X coordinate
-   * @param minY Minimum Y coordinate
-   * @param maxY Maximum Y coordinate
-   */
-  setCoordinateFilter(minX: number, maxX: number, minY: number, maxY: number): void
-  
-  /**
-   * Set event type filter (legacy method)
-   * @param allowKeyboard Allow keyboard events
-   * @param allowMouse Allow mouse events
-   * @param allowScroll Allow scroll events
-   */
-  setEventTypeFilter(allowKeyboard: boolean, allowMouse: boolean, allowScroll: boolean): void
-  
-  /**
-   * Clear all filters (legacy method)
-   */
-  clearFilters(): void
-  
-  // EventEmitter method overrides for better typing
-  /**
-   * Add event listener for specific event type
-   * @param eventName Event name (string) or CGEventType (number)
-   * @param listener Event handler function
-   */
-  on(eventName: CGEventTypeString, listener: (data: EventData) => void): this
-  on(eventName: CGEventTypeNumber, listener: (data: EventData) => void): this
-  on(eventName: 'event', listener: (data: EventData) => void): this
-  on(eventName: string | number, listener: (...args: any[]) => void): this
-  
-  /**
-   * Add one-time event listener
-   * @param eventName Event name (string) or CGEventType (number)
-   * @param listener Event handler function
-   */
-  once(eventName: CGEventTypeString, listener: (data: EventData) => void): this
-  once(eventName: CGEventTypeNumber, listener: (data: EventData) => void): this
-  once(eventName: 'event', listener: (data: EventData) => void): this
-  once(eventName: string | number, listener: (...args: any[]) => void): this
-  
-  /**
-   * Remove event listener
-   * @param eventName Event name (string) or CGEventType (number)
-   * @param listener Event handler function to remove
-   */
-  off(eventName: CGEventTypeString, listener: (data: EventData) => void): this
-  off(eventName: CGEventTypeNumber, listener: (data: EventData) => void): this
-  off(eventName: 'event', listener: (data: EventData) => void): this
-  off(eventName: string | number, listener: (...args: any[]) => void): this
-  
-  /**
-   * Emit event (internal use)
-   * @param eventName Event name
-   * @param args Event arguments
-   */
-  emit(eventName: string | number, ...args: any[]): boolean
 }
 
-// Static class interface for accessing static members
-export interface MacOSEventHookStatic {
+// Static class interface for MacOSEventHook constructor
+interface MacOSEventHookStatic {
   /**
    * CGEventType to string mapping
    */
@@ -316,7 +245,18 @@ export interface MacOSEventHookStatic {
   new(): MacOSEventHook
 }
 
+// Export types for external use
+export type {
+  EventData,
+  AccessibilityPermissionsResult,
+  EventFilterOptions,
+  CGEventTypesMap,
+  EventTypeToIntMap,
+  EventNames,
+  CGEventTypeNumber,
+  MacOSEventHook
+}
+
 // Export the singleton instance (as per index.js: module.exports = instance)
 declare const iohookMacos: MacOSEventHook
-
-export = iohookMacos 
+export default iohookMacos 

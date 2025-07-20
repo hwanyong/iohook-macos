@@ -21,6 +21,7 @@ build/
 # Test files
 test/
 tests/
+examples/test/
 *.test.js
 *.test.ts
 *.spec.js
