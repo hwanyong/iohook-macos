@@ -1,0 +1,49 @@
+# Development files
+.github/
+docs/ai-usage-guide*.md
+docs/prd/
+examples/
+src/
+build/
+*.log
+*.tmp
+
+# Git files
+.git/
+.gitignore
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+test/
+tests/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Development dependencies
+tsconfig.json
+binding.gyp
+
+# macOS files
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Temporary folders
+tmp/
+temp/ 

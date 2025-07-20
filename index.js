@@ -1,8 +1,8 @@
 const EventEmitter = require('events');
 const path = require('path');
 
-// Load the native module
-const nativeModule = require('./build/Release/iohook-macos.node');
+// Load the native module using node-gyp-build for better binary distribution
+const nativeModule = require('node-gyp-build')(path.join(__dirname));
 
 // CGEventType to String mapping table
 const CGEventTypes = {

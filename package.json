@@ -1,9 +1,18 @@
 {
   "name": "iohook-macos",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "High-performance macOS system event hook library for Electron applications",
   "main": "index.js",
   "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "bin/",
+    "LICENSE",
+    "README.md",
+    "README.ko.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "install": "node-gyp rebuild",
     "rebuild": "node-gyp rebuild",
@@ -16,7 +25,14 @@
     "electron-test": "npm run electron-rebuild && npm run electron",
     "electron-dev": "electron examples/electron/electron-main.js --enable-logging",
     "typescript-example": "npx ts-node examples/typescript/typescript-example.ts",
-    "typescript-compile": "npx tsc examples/typescript/typescript-example.ts --outDir build/typescript --moduleResolution node --target es2020"
+    "typescript-compile": "npx tsc examples/typescript/typescript-example.ts --outDir build/typescript --moduleResolution node --target es2020",
+    "version": "npm version",
+    "prepublishOnly": "npm test",
+    "preversion": "npm test",
+    "postversion": "git push && git push --tags",
+    "release:patch": "npm version patch",
+    "release:minor": "npm version minor",
+    "release:major": "npm version major"
   },
   "keywords": [
     "macos",
@@ -29,16 +45,16 @@
     "cgeventtap",
     "accessibility"
   ],
-  "author": "iohook-macos",
+  "author": "hwanyong",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/iohook-macos.git"
+    "url": "git+https://github.com/hwanyong/iohook-macos.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/iohook-macos/issues"
+    "url": "https://github.com/hwanyong/iohook-macos/issues"
   },
-  "homepage": "https://github.com/your-username/iohook-macos#readme",
+  "homepage": "https://github.com/hwanyong/iohook-macos#readme",
   "engines": {
     "node": ">=14.0.0"
   },
