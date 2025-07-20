@@ -4,14 +4,60 @@ const path = require('path');
 // Load the native module
 const nativeModule = require('./build/Release/iohook-macos.node');
 
+// CGEventType to String mapping table
+const CGEventTypes = {
+    0: "null",
+    1: "leftMouseDown", 
+    2: "leftMouseUp",
+    3: "rightMouseDown",
+    4: "rightMouseUp",
+    5: "mouseMoved",
+    6: "leftMouseDragged",
+    7: "rightMouseDragged",
+    10: "keyDown",
+    11: "keyUp",
+    12: "flagsChanged",
+    22: "scrollWheel",
+    23: "tabletPointer",
+    24: "tabletProximity",
+    25: "otherMouseDown",
+    26: "otherMouseUp",
+    27: "otherMouseDragged"
+}
+
+// Reverse mapping for convenience (string to int)
+const EventTypeToInt = {}
+Object.keys(CGEventTypes).forEach(key => {
+    EventTypeToInt[CGEventTypes[key]] = parseInt(key)
+})
+
 class MacOSEventHook extends EventEmitter {
     constructor() {
         super();
-        this.isMonitoring = false;
+        this._isMonitoring = false;
         this.pollingInterval = null;
         this.pollingRate = 16; // ~60fps (16ms)
         
         console.log('[iohook-macos] MacOSEventHook instance created');
+    }
+
+    // Static getter for CGEventTypes mapping
+    static get CGEventTypes() {
+        return CGEventTypes
+    }
+
+    // Static getter for reverse mapping  
+    static get EventTypeToInt() {
+        return EventTypeToInt
+    }
+
+    // Instance getters for convenience
+    get CGEventTypes() {
+        return CGEventTypes
+    }
+
+    get EventTypeToInt() {
+        return EventTypeToInt
     }
 
     // Set polling rate (in milliseconds)
@@ -20,7 +66,7 @@ class MacOSEventHook extends EventEmitter {
         console.log(`[iohook-macos] Polling rate set to ${this.pollingRate}ms`);
         
         // Restart polling if already running
-        if (this.isMonitoring) {
+        if (this._isMonitoring) {
             this.stopPolling();
             this.startPolling();
         }
@@ -38,7 +84,15 @@ class MacOSEventHook extends EventEmitter {
                 const maxEventsPerPoll = 50; // Prevent blocking
                 
                 while ((event = nativeModule.getNextEvent()) && eventCount < maxEventsPerPoll) {
-                    this.emit(event.type, event);
+                    // event.type is now an int (CGEventType value)
+                    const eventTypeInt = event.type
+                    const eventTypeString = CGEventTypes[eventTypeInt] || "unknown"
+                    
+                    // Emit with both int and string for user convenience
+                    this.emit(eventTypeInt, event)        // For users who want to use int
+                    this.emit(eventTypeString, event)     // For users who want to use string
+                    this.emit('event', event)             // Generic event for all types
+                    
                     eventCount++;
                 }
                 
@@ -80,7 +134,7 @@ class MacOSEventHook extends EventEmitter {
         
         // Start JavaScript polling
         this.startPolling();
-        this.isMonitoring = true;
+        this._isMonitoring = true;
         
         console.log('[iohook-macos] JavaScript: Listening for events...');
     }
@@ -90,11 +144,16 @@ class MacOSEventHook extends EventEmitter {
         console.log('[iohook-macos] JavaScript: stopMonitoring called');
         
         this.stopPolling();
-        this.isMonitoring = false;
+        this._isMonitoring = false;
         
         // Stop native monitoring
         nativeModule.stopMonitoring();
         console.log('[iohook-macos] JavaScript: Native stopMonitoring completed');
+    }
+
+    // Check if monitoring is currently active
+    isMonitoring() {
+        return this._isMonitoring;
     }
 
     // Get current queue size

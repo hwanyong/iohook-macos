@@ -26,11 +26,15 @@ function createWindow() {
 function initializeIOHook() {
     try {
         console.log('🔧 Loading iohook-macos library...');
-        iohook = require('./index.js');
+        iohook = require('../../index.js');
         console.log('✅ iohook-macos loaded successfully in Electron!');
         
-        // Set up event listeners
+        // Demonstrate both string and int event type usage
+        console.log('📋 Available CGEventTypes mapping:', iohook.CGEventTypes);
+        
+        // Set up event listeners using string names (backward compatible)
         iohook.on('keyDown', (data) => {
+            console.log(`📝 String event: keyDown (type: ${data.type})`);
             mainWindow.webContents.send('event-data', data);
         });
         
@@ -38,14 +42,18 @@ function initializeIOHook() {
             mainWindow.webContents.send('event-data', data);
         });
         
-        iohook.on('leftMouseDown', (data) => {
+        // Set up event listeners using int values (new feature)
+        iohook.on(1, (data) => {  // kCGEventLeftMouseDown = 1
+            console.log(`🔢 Int event: leftMouseDown (CGEventType: ${data.type})`);
             mainWindow.webContents.send('event-data', data);
         });
         
-        iohook.on('leftMouseUp', (data) => {
+        iohook.on(2, (data) => {  // kCGEventLeftMouseUp = 2
+            console.log(`🔢 Int event: leftMouseUp (CGEventType: ${data.type})`);
             mainWindow.webContents.send('event-data', data);
         });
         
+        // Mix of string and int for demonstration
         iohook.on('rightMouseDown', (data) => {
             mainWindow.webContents.send('event-data', data);
         });
@@ -58,7 +66,8 @@ function initializeIOHook() {
             mainWindow.webContents.send('event-data', data);
         });
         
-        iohook.on('scrollWheel', (data) => {
+        iohook.on(22, (data) => {  // kCGEventScrollWheel = 22
+            console.log(`🔢 Int event: scrollWheel (CGEventType: ${data.type})`);
             mainWindow.webContents.send('event-data', data);
         });
         

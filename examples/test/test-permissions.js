@@ -4,7 +4,7 @@ console.log('=== iohook-macos Accessibility Permissions Test ===\n')
 
 try {
     // Load the module
-    const iohook = require('./index.js')
+    const iohook = require('../../index.js')
     
     // Check current permissions status
     console.log('1. Checking current accessibility permissions...')

@@ -5,7 +5,7 @@ console.log('This test demonstrates event modification and consumption capabilit
 console.log('WARNING: This will modify/block system events - use carefully!\n')
 
 try {
-    const iohook = require('./index.js')
+    const iohook = require('../../index.js')
     
     // Test 1: Basic observation mode (default)
     console.log('📝 Phase 1: Basic observation mode (5 seconds)')

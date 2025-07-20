@@ -5,7 +5,7 @@ console.log('This test focuses on keyboard input detection.')
 console.log('Please type keys, use modifiers (Shift, Cmd, Ctrl, Option)...\n')
 
 try {
-    const iohook = require('./index.js')
+    const iohook = require('../../index.js')
     
     // Set up keyboard-focused event listeners
     iohook.on('keyDown', (eventData) => {

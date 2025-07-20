@@ -6,7 +6,7 @@ console.log('Try pressing keys and clicking mouse buttons...\n')
 
 try {
     // Load the module
-    const iohook = require('./index.js')
+    const iohook = require('../../index.js')
     
     // Set up event listeners
     iohook.on('keyDown', (eventData) => {

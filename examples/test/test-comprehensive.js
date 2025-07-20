@@ -25,7 +25,7 @@ function runTest(testName, testFunction) {
 
 try {
     // Load the module
-    const iohook = require('./index.js')
+    const iohook = require('../../index.js')
     
     // Test 1: Module Loading and Initialization
     runTest('Module Loading and Initialization', () => {

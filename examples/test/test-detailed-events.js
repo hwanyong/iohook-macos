@@ -5,7 +5,7 @@ console.log('This test will show all available event data fields.')
 console.log('Try different input types: keys, mouse buttons, scroll wheel...\n')
 
 try {
-    const iohook = require('./index.js')
+    const iohook = require('../../index.js')
     
     // Set up detailed event listeners
     iohook.on('keyDown', (eventData) => {

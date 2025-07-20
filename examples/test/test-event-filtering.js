@@ -5,7 +5,7 @@ console.log('This test demonstrates various event filtering capabilities.')
 console.log('Different filters will be applied and removed during the test.\n')
 
 try {
-    const iohook = require('./index.js')
+    const iohook = require('../../index.js')
     
     // Generic event listener for all tests
     iohook.on('keyDown', (eventData) => {

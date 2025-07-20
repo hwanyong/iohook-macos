@@ -5,7 +5,7 @@ console.log('=== iohook-macos Basic Functionality Test ===')
 try {
     // Load the module
     console.log('\n1. Loading iohook-macos module...')
-    const iohook = require('./index.js')
+    const iohook = require('../../index.js')
     
     // Test initial state
     console.log('\n2. Testing initial state...')

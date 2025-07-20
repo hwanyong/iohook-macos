@@ -301,16 +301,41 @@
             }
         });
         
+        // CGEventType mapping table for the frontend
+        const CGEventTypes = {
+            0: "null",
+            1: "leftMouseDown", 
+            2: "leftMouseUp",
+            3: "rightMouseDown",
+            4: "rightMouseUp",
+            5: "mouseMoved",
+            6: "leftMouseDragged",
+            7: "rightMouseDragged",
+            10: "keyDown",
+            11: "keyUp",
+            12: "flagsChanged",
+            22: "scrollWheel",
+            23: "tabletPointer",
+            24: "tabletProximity",
+            25: "otherMouseDown",
+            26: "otherMouseUp",
+            27: "otherMouseDragged"
+        };
+        
         ipcRenderer.on('event-data', (event, eventData) => {
+            console.log('event-data', eventData);
             stats.total++;
             
-            // Update statistics
-            const eventType = eventData.type;
-            if (eventType.includes('key') || eventType.includes('Key')) {
+            // eventData.type is now an int (CGEventType value)
+            const eventTypeInt = eventData.type;
+            const eventTypeString = CGEventTypes[eventTypeInt] || "unknown";
+            
+            // Update statistics based on CGEventType int values
+            if (eventTypeInt === 10 || eventTypeInt === 11) {  // keyDown, keyUp
                 stats.keyboard++;
-            } else if (eventType.includes('mouse') || eventType.includes('Mouse')) {
+            } else if ((eventTypeInt >= 1 && eventTypeInt <= 7) || (eventTypeInt >= 25 && eventTypeInt <= 27)) {  // mouse events
                 stats.mouse++;
-            } else if (eventType.includes('scroll') || eventType.includes('Scroll')) {
+            } else if (eventTypeInt === 22) {  // scrollWheel
                 stats.scroll++;
             }
             
@@ -322,13 +347,17 @@
             
             // Add to event log
             const timestamp = new Date().toLocaleTimeString();
-            const eventClass = eventType.includes('key') ? 'event-keyboard' : 
-                             eventType.includes('mouse') ? 'event-mouse' : 'event-scroll';
+            let eventClass = 'event-scroll';  // default
+            if (eventTypeInt === 10 || eventTypeInt === 11) {
+                eventClass = 'event-keyboard';
+            } else if ((eventTypeInt >= 1 && eventTypeInt <= 7) || (eventTypeInt >= 25 && eventTypeInt <= 27)) {
+                eventClass = 'event-mouse';
+            }
             
             const eventLine = document.createElement('div');
             eventLine.className = `event-line ${eventClass}`;
             
-            let details = `[${timestamp}] ${eventData.type}`;
+            let details = `[${timestamp}] ${eventTypeString} (${eventTypeInt})`;
             if (eventData.x !== undefined) details += ` at (${Math.round(eventData.x)}, ${Math.round(eventData.y)})`;
             if (eventData.keyCode) details += ` key:${eventData.keyCode}`;
             if (eventData.processId) details += ` pid:${eventData.processId}`;

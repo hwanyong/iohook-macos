@@ -10,7 +10,7 @@
 
 // Simple event data structure for polling
 struct SimpleEvent {
-    std::string eventName;
+    int eventType;  // Changed from eventName(string) to eventType(int) - CGEventType value
     double x, y;
     double timestamp;
     uint32_t processId;
@@ -91,84 +91,40 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         return event;
     }
     
-    // Log detected events to console (C++ side) - only if verbose logging is enabled
-    const char* eventName = nullptr;
-    
-    switch (type) {
-        case kCGEventKeyDown:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Key Down detected!" << std::endl;
-            eventName = "keyDown";
-            break;
-        case kCGEventKeyUp:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Key Up detected!" << std::endl;
-            eventName = "keyUp";
-            break;
-        case kCGEventLeftMouseDown:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Left Mouse Down detected!" << std::endl;
-            eventName = "leftMouseDown";
-            break;
-        case kCGEventLeftMouseUp:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Left Mouse Up detected!" << std::endl;
-            eventName = "leftMouseUp";
-            break;
-        case kCGEventRightMouseDown:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Right Mouse Down detected!" << std::endl;
-            eventName = "rightMouseDown";
-            break;
-        case kCGEventRightMouseUp:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Right Mouse Up detected!" << std::endl;
-            eventName = "rightMouseUp";
-            break;
-        case kCGEventMouseMoved:
-            // Performance optimization: throttle mouse move events
-            if (performanceConfig.enableMouseMoveThrottling) {
-                double currentTime = CFAbsoluteTimeGetCurrent();
-                if (currentTime - performanceConfig.lastMouseMoveTime < performanceConfig.mouseMoveThrottleInterval) {
-                    return event; // Skip this mouse move event due to throttling
-                }
-                performanceConfig.lastMouseMoveTime = currentTime;
+    // Performance optimization and filtering for mouse move events
+    if (type == kCGEventMouseMoved) {
+        // Throttle mouse move events
+        if (performanceConfig.enableMouseMoveThrottling) {
+            double currentTime = CFAbsoluteTimeGetCurrent();
+            if (currentTime - performanceConfig.lastMouseMoveTime < performanceConfig.mouseMoveThrottleInterval) {
+                return event; // Skip this mouse move event due to throttling
             }
-            
-            // Performance mode: optionally skip mouse move events entirely
-            if (performanceConfig.enablePerformanceMode && performanceConfig.skipMouseMoveInPerformanceMode) {
-                return event;
-            }
-            
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Mouse Moved detected!" << std::endl;
-            eventName = "mouseMoved";
-            break;
-        case kCGEventLeftMouseDragged:
-        case kCGEventRightMouseDragged:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Mouse Dragged detected!" << std::endl;
-            eventName = "mouseDragged";
-            break;
-        case kCGEventScrollWheel:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Scroll Wheel detected!" << std::endl;
-            eventName = "scrollWheel";
-            break;
-        case kCGEventOtherMouseDown:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Other Mouse Down detected!" << std::endl;
-            eventName = "otherMouseDown";
-            break;
-        case kCGEventOtherMouseUp:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Other Mouse Up detected!" << std::endl;
-            eventName = "otherMouseUp";
-            break;
-        case kCGEventOtherMouseDragged:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Other Mouse Dragged detected!" << std::endl;
-            eventName = "otherMouseDragged";
-            break;
-        case kCGEventTabletPointer:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Tablet Pointer detected!" << std::endl;
-            eventName = "tabletPointer";
-            break;
-        case kCGEventTabletProximity:
-            if (performanceConfig.enableVerboseLogging) std::cout << "[iohook-macos] Tablet Proximity detected!" << std::endl;
-            eventName = "tabletProximity";
-            break;
-        default:
-            // Ignore other events for now
+            performanceConfig.lastMouseMoveTime = currentTime;
+        }
+        
+        // Performance mode: optionally skip mouse move events entirely
+        if (performanceConfig.enablePerformanceMode && performanceConfig.skipMouseMoveInPerformanceMode) {
             return event;
+        }
+    }
+    
+    // Check if this is a supported event type
+    bool isSupportedEvent = (type == kCGEventKeyDown || type == kCGEventKeyUp ||
+                           type == kCGEventLeftMouseDown || type == kCGEventLeftMouseUp ||
+                           type == kCGEventRightMouseDown || type == kCGEventRightMouseUp ||
+                           type == kCGEventMouseMoved || type == kCGEventLeftMouseDragged ||
+                           type == kCGEventRightMouseDragged || type == kCGEventScrollWheel ||
+                           type == kCGEventOtherMouseDown || type == kCGEventOtherMouseUp ||
+                           type == kCGEventOtherMouseDragged || type == kCGEventTabletPointer ||
+                           type == kCGEventTabletProximity);
+    
+    if (!isSupportedEvent) {
+        return event; // Ignore unsupported events
+    }
+    
+    // Log detected events to console (C++ side) - only if verbose logging is enabled
+    if (performanceConfig.enableVerboseLogging) {
+        std::cout << "[iohook-macos] Event detected - CGEventType: " << type << std::endl;
     }
     
     // Apply event filtering if enabled
@@ -220,7 +176,7 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
                 (isMouse && !eventFilter.allowMouse) ||
                 (isScroll && !eventFilter.allowScroll)) {
                 if (performanceConfig.enableVerboseLogging) {
-                    std::cout << "[iohook-macos] Event filtered out (event type not allowed: " << eventName << ")" << std::endl;
+                    std::cout << "[iohook-macos] Event filtered out (event type not allowed: " << type << ")" << std::endl;
                 }
                 return event; // Pass through without processing
             }
@@ -232,48 +188,46 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
     }
     
     // Send event to JavaScript queue (safe polling approach)
-    if (eventName) {
-        // Extract essential data
-        CGPoint location = CGEventGetLocation(event);
-        double eventX = location.x;
-        double eventY = location.y;
-        uint32_t eventProcessId = (uint32_t)CGEventGetIntegerValueField(event, kCGEventTargetUnixProcessID);
-        uint16_t eventKeyCode = 0;
-        bool hasKeyCode = false;
-        
-        // Extract keycode for keyboard events
-        if (type == kCGEventKeyDown || type == kCGEventKeyUp) {
-            if (event) {
-                hasKeyCode = true;
-                int64_t rawKeyCode = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-                eventKeyCode = (rawKeyCode >= 0 && rawKeyCode <= UINT16_MAX) ? (uint16_t)rawKeyCode : 0;
-            }
+    // Extract essential data
+    CGPoint location = CGEventGetLocation(event);
+    double eventX = location.x;
+    double eventY = location.y;
+    uint32_t eventProcessId = (uint32_t)CGEventGetIntegerValueField(event, kCGEventTargetUnixProcessID);
+    uint16_t eventKeyCode = 0;
+    bool hasKeyCode = false;
+    
+    // Extract keycode for keyboard events
+    if (type == kCGEventKeyDown || type == kCGEventKeyUp) {
+        if (event) {
+            hasKeyCode = true;
+            int64_t rawKeyCode = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
+            eventKeyCode = (rawKeyCode >= 0 && rawKeyCode <= UINT16_MAX) ? (uint16_t)rawKeyCode : 0;
         }
-        
-        // Add to queue safely
-        std::lock_guard<std::mutex> lock(queueMutex);
-        
-        // Prevent queue overflow
-        if (eventQueue.size() >= MAX_QUEUE_SIZE) {
-            eventQueue.pop(); // Remove oldest event
-        }
-        
-        // Add new event
-        SimpleEvent newEvent;
-        newEvent.eventName = eventName;
-        newEvent.x = eventX;
-        newEvent.y = eventY;
-        newEvent.timestamp = CFAbsoluteTimeGetCurrent();
-        newEvent.processId = eventProcessId;
-        newEvent.keyCode = eventKeyCode;
-        newEvent.hasKeyCode = hasKeyCode;
-        
-        eventQueue.push(newEvent);
-        
-        if (performanceConfig.enableVerboseLogging) {
-            std::cout << "[iohook-macos] Event queued: " << eventName 
-                      << " (Queue size: " << eventQueue.size() << ")" << std::endl;
-        }
+    }
+    
+    // Add to queue safely
+    std::lock_guard<std::mutex> lock(queueMutex);
+    
+    // Prevent queue overflow
+    if (eventQueue.size() >= MAX_QUEUE_SIZE) {
+        eventQueue.pop(); // Remove oldest event
+    }
+    
+    // Add new event
+    SimpleEvent newEvent;
+    newEvent.eventType = (int)type;  // Use CGEventType int value directly
+    newEvent.x = eventX;
+    newEvent.y = eventY;
+    newEvent.timestamp = CFAbsoluteTimeGetCurrent();
+    newEvent.processId = eventProcessId;
+    newEvent.keyCode = eventKeyCode;
+    newEvent.hasKeyCode = hasKeyCode;
+    
+    eventQueue.push(newEvent);
+    
+    if (performanceConfig.enableVerboseLogging) {
+        std::cout << "[iohook-macos] Event queued: CGEventType " << type 
+                  << " (Queue size: " << eventQueue.size() << ")" << std::endl;
     }
     
     // Return the event unmodified (passthrough mode)
@@ -324,7 +278,7 @@ Napi::Value GetNextEvent(const Napi::CallbackInfo& info) {
     
     // Create JavaScript object
     Napi::Object eventObj = Napi::Object::New(env);
-    eventObj.Set("type", Napi::String::New(env, event.eventName));
+    eventObj.Set("type", Napi::Number::New(env, event.eventType));  // Return CGEventType int value
     eventObj.Set("x", Napi::Number::New(env, event.x));
     eventObj.Set("y", Napi::Number::New(env, event.y));
     eventObj.Set("timestamp", Napi::Number::New(env, event.timestamp));

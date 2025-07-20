@@ -5,7 +5,7 @@ console.log('This test demonstrates performance optimization features.')
 console.log('Different performance settings will be applied during the test.\n')
 
 try {
-    const iohook = require('./index.js')
+    const iohook = require('../../index.js')
     
     let eventCount = 0
     

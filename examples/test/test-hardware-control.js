@@ -5,7 +5,7 @@ console.log('This test demonstrates advanced hardware control capabilities.')
 console.log('Test with different input devices for comprehensive coverage.\n')
 
 try {
-    const iohook = require('./index.js')
+    const iohook = require('../../index.js')
     
     // Enable performance mode for cleaner output
     iohook.setVerboseLogging(false)
