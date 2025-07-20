@@ -1,6 +1,6 @@
 {
   "name": "iohook-macos",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "High-performance macOS system event hook library for Electron applications",
   "main": "index.js",
   "types": "index.d.ts",
@@ -58,7 +58,9 @@
   "engines": {
     "node": ">=14.0.0"
   },
-  "os": ["darwin"],
+  "os": [
+    "darwin"
+  ],
   "dependencies": {
     "node-addon-api": "^7.0.0",
     "node-gyp-build": "^4.6.0"
@@ -71,4 +73,4 @@
     "ts-node": "^10.9.0"
   },
   "gypfile": true
-} 
+}
