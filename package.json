@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "High-performance macOS system event hook library for Electron applications",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "install": "node-gyp rebuild",
     "rebuild": "node-gyp rebuild",
@@ -13,7 +14,9 @@
     "electron": "electron examples/electron/electron-main.js",
     "electron-rebuild": "electron-rebuild",
     "electron-test": "npm run electron-rebuild && npm run electron",
-    "electron-dev": "electron examples/electron/electron-main.js --enable-logging"
+    "electron-dev": "electron examples/electron/electron-main.js --enable-logging",
+    "typescript-example": "npx ts-node examples/typescript/typescript-example.ts",
+    "typescript-compile": "npx tsc examples/typescript/typescript-example.ts --outDir build/typescript --moduleResolution node --target es2020"
   },
   "keywords": [
     "macos",
@@ -46,7 +49,10 @@
   },
   "devDependencies": {
     "electron": "^27.0.0",
-    "electron-rebuild": "^3.2.9"
+    "electron-rebuild": "^3.2.9",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
   },
   "gypfile": true
 } 
