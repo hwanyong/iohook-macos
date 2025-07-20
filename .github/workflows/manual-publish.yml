@@ -1,9 +1,17 @@
-name: Release
+name: Manual Publish
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version type (patch, minor, major)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
 
 jobs:
   publish:
@@ -11,6 +19,9 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
     
     - name: Use Node.js 18
       uses: actions/setup-node@v4
@@ -34,26 +45,41 @@ jobs:
     - name: Build native module
       run: npm run rebuild
     
+    - name: Configure git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+    
+    - name: Version bump and create tag
+      run: |
+        npm version ${{ github.event.inputs.version }}
+        echo "NEW_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+    
     - name: Verify package contents
       run: |
         echo "Package contents:"
-        npm pack --dry-run
+        npm run publish:check
         echo "Checking native binary:"
         find . -name "*.node" -type f || echo "No .node files found"
         ls -la bin/ || echo "No bin directory"
     
     - name: Publish to npm
-      run: npm publish --access public
+      run: npm publish
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    
+    - name: Push changes
+      run: |
+        git push origin main
+        git push origin --tags
     
     - name: Create GitHub Release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref_name }}
-        release_name: Release ${{ github.ref_name }}
+        tag_name: v${{ env.NEW_VERSION }}
+        release_name: Release v${{ env.NEW_VERSION }}
         body: |
           ## Changes in this release
           
@@ -62,7 +88,7 @@ jobs:
           ## Installation
           
           ```bash
-          npm install iohook-macos@${{ github.ref_name }}
+          npm install iohook-macos@${{ env.NEW_VERSION }}
           ```
           
           ## Features

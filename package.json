@@ -8,11 +8,16 @@
     "index.js",
     "index.d.ts",
     "bin/",
+    "build/Release/*.node",
     "LICENSE",
     "README.md",
     "README.ko.md",
     "CHANGELOG.md"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "install": "node-gyp-build",
     "rebuild": "node-gyp rebuild",
@@ -28,9 +33,10 @@
     "typescript-example": "npx ts-node examples/typescript/typescript-example.ts",
     "typescript-compile": "npx tsc examples/typescript/typescript-example.ts --outDir build/typescript --moduleResolution node --target es2020",
     "version": "npm version",
-    "prepublishOnly": "npm test",
+    "prepublishOnly": "npm test && npm run rebuild",
     "preversion": "npm test",
     "postversion": "git push && git push --tags",
+    "publish:check": "npm pack --dry-run",
     "release:patch": "npm version patch",
     "release:minor": "npm version minor",
     "release:major": "npm version major"
