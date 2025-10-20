@@ -6,7 +6,49 @@ on:
       - 'v*'
 
 jobs:
+  build-binaries:
+    name: Build ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    
+    strategy:
+      matrix:
+        include:
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+          - os: darwin
+            arch: x64
+            runner: macos-13
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: 'npm'
+    
+    - name: Install system dependencies
+      run: |
+        xcode-select --install 2>/dev/null || true
+        xcode-select --print-path
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build prebuilt binary
+      run: npm run prebuild
+    
+    - name: Upload binary artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: prebuilds-${{ matrix.os }}-${{ matrix.arch }}
+        path: prebuilds/
+        retention-days: 1
+
   publish:
+    needs: build-binaries
     runs-on: macos-latest
     
     steps:
@@ -19,28 +61,31 @@ jobs:
         registry-url: 'https://registry.npmjs.org'
         cache: 'npm'
     
-    - name: Install system dependencies
-      run: |
-        # Ensure Xcode Command Line Tools are available
-        xcode-select --install 2>/dev/null || true
-        xcode-select --print-path
-    
     - name: Install dependencies
       run: npm ci
     
+    - name: Download all binary artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: prebuilds-temp
+    
+    - name: Organize prebuilt binaries
+      run: |
+        mkdir -p prebuilds
+        cp -r prebuilds-temp/prebuilds-darwin-arm64/* prebuilds/ || true
+        cp -r prebuilds-temp/prebuilds-darwin-x64/* prebuilds/ || true
+        echo "Prebuilt binaries:"
+        find prebuilds -type f
+    
     - name: Run tests
       run: npm test
-    
-    - name: Build native module
-      run: npm run rebuild
     
     - name: Verify package contents
       run: |
         echo "Package contents:"
         npm pack --dry-run
-        echo "Checking native binary:"
-        find . -name "*.node" -type f || echo "No .node files found"
-        ls -la bin/ || echo "No bin directory"
+        echo "Checking prebuilt binaries:"
+        find prebuilds -name "*.node" -type f || echo "No .node files found"
     
     - name: Publish to npm
       run: npm publish --access public

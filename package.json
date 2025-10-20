@@ -7,6 +7,7 @@
   "files": [
     "index.js",
     "index.d.ts",
+    "prebuilds/",
     "bin/",
     "build/Release/*.node",
     "LICENSE",
@@ -21,6 +22,10 @@
   "scripts": {
     "install": "node-gyp-build",
     "rebuild": "node-gyp rebuild",
+    "prebuild": "prebuildify --napi --strip",
+    "prebuild-arm64": "prebuildify --napi --strip --arch arm64",
+    "prebuild-x64": "prebuildify --napi --strip --arch x64",
+    "prebuild-all": "npm run prebuild-arm64 && npm run prebuild-x64",
     "test": "node examples/test/test-ci.js",
     "test-basic": "node examples/test/test.js",
     "test-permissions": "node examples/test/test-permissions.js",
@@ -33,7 +38,7 @@
     "typescript-example": "npx ts-node examples/typescript/typescript-example.ts",
     "typescript-compile": "npx tsc examples/typescript/typescript-example.ts --outDir build/typescript --moduleResolution node --target es2020",
     "version": "npm version",
-    "prepublishOnly": "npm test && npm run rebuild",
+    "prepublishOnly": "npm run prebuild-all && npm test",
     "preversion": "npm test",
     "postversion": "git push && git push --tags",
     "publish:check": "npm pack --dry-run",
@@ -76,6 +81,7 @@
     "@electron/rebuild": "^4.0.1",
     "@types/node": "^20.0.0",
     "electron": "^27.0.0",
+    "prebuildify": "^6.0.1",
     "ts-node": "^10.9.0",
     "typescript": "^5.0.0"
   },

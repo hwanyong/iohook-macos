@@ -11,12 +11,14 @@ lerna-debug.log*
 build/
 Release/
 Debug/
-*.node
 *.a
 *.o
 *.so
 *.dylib
 *.dll
+
+# Prebuilt binaries (CI/CD에서 생성, npm 배포 시에만 포함)
+prebuilds/
 
 # Logs
 logs

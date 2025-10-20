@@ -8,14 +8,37 @@ try {
     console.log('[iohook-macos] Native module loaded successfully via node-gyp-build');
 } catch (buildError) {
     console.log('[iohook-macos] node-gyp-build failed, trying fallback paths...');
-    try {
-        // Fallback to direct path
-        nativeModule = require('./build/Release/iohook-macos.node');
-        console.log('[iohook-macos] Native module loaded via fallback path');
-    } catch (fallbackError) {
-        console.error('[iohook-macos] Failed to load native module:', buildError.message);
-        console.error('[iohook-macos] Fallback also failed:', fallbackError.message);
-        throw new Error('Native module could not be loaded. Please run: npm run rebuild');
+    console.log('[iohook-macos] Error:', buildError.message);
+    
+    // Try multiple fallback paths
+    const fallbackPaths = [
+        './build/Release/iohook-macos.node',
+        './prebuilds/darwin-arm64/iohook-macos.node',
+        './prebuilds/darwin-x64/iohook-macos.node'
+    ];
+    
+    let loaded = false;
+    for (const fallbackPath of fallbackPaths) {
+        try {
+            nativeModule = require(fallbackPath);
+            console.log(`[iohook-macos] Native module loaded via fallback path: ${fallbackPath}`);
+            loaded = true;
+            break;
+        } catch (err) {
+            console.log(`[iohook-macos] Failed to load from ${fallbackPath}`);
+        }
+    }
+    
+    if (!loaded) {
+        console.error('[iohook-macos] All fallback paths failed');
+        console.error('[iohook-macos] Platform:', process.platform);
+        console.error('[iohook-macos] Architecture:', process.arch);
+        console.error('[iohook-macos] Node version:', process.version);
+        throw new Error(
+            'Native module could not be loaded. ' +
+            'This package requires macOS (darwin) and may need to be rebuilt. ' +
+            'Try running: npm run rebuild'
+        );
     }
 }
 
