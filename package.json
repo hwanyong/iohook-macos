@@ -1,6 +1,6 @@
 {
   "name": "iohook-macos",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "High-performance macOS system event hook library for Electron applications",
   "main": "index.js",
   "types": "index.d.ts",
