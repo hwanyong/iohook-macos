@@ -58,6 +58,10 @@ interface EventData {
   keyCode?: number
   /** Whether keyCode property is available */
   hasKeyCode?: boolean
+  /** Modifier flags (for flagsChanged events) */
+  flags?: number
+  /** Whether flags property is available */
+  hasFlags?: boolean
 }
 
 // Accessibility permissions check result

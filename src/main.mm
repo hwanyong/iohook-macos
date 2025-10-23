@@ -16,6 +16,8 @@ struct SimpleEvent {
     uint32_t processId;
     uint16_t keyCode;
     bool hasKeyCode;
+    uint64_t flags;  // Modifier flags for flagsChanged events
+    bool hasFlags;
 };
 
 // Thread-safe event queue
@@ -110,6 +112,7 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
     
     // Check if this is a supported event type
     bool isSupportedEvent = (type == kCGEventKeyDown || type == kCGEventKeyUp ||
+                           type == kCGEventFlagsChanged ||
                            type == kCGEventLeftMouseDown || type == kCGEventLeftMouseUp ||
                            type == kCGEventRightMouseDown || type == kCGEventRightMouseUp ||
                            type == kCGEventMouseMoved || type == kCGEventLeftMouseDragged ||
@@ -168,7 +171,7 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         
         // Event type filtering
         if (eventFilter.filterByEventType) {
-            bool isKeyboard = (type == kCGEventKeyDown || type == kCGEventKeyUp);
+            bool isKeyboard = (type == kCGEventKeyDown || type == kCGEventKeyUp || type == kCGEventFlagsChanged);
             bool isMouse = (type >= kCGEventLeftMouseDown && type <= kCGEventRightMouseDragged);
             bool isScroll = (type == kCGEventScrollWheel);
             
@@ -195,6 +198,8 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
     uint32_t eventProcessId = (uint32_t)CGEventGetIntegerValueField(event, kCGEventTargetUnixProcessID);
     uint16_t eventKeyCode = 0;
     bool hasKeyCode = false;
+    uint64_t eventFlags = 0;
+    bool hasFlags = false;
     
     // Extract keycode for keyboard events
     if (type == kCGEventKeyDown || type == kCGEventKeyUp) {
@@ -202,6 +207,14 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
             hasKeyCode = true;
             int64_t rawKeyCode = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
             eventKeyCode = (rawKeyCode >= 0 && rawKeyCode <= UINT16_MAX) ? (uint16_t)rawKeyCode : 0;
+        }
+    }
+    
+    // Extract flags for flagsChanged events
+    if (type == kCGEventFlagsChanged) {
+        if (event) {
+            hasFlags = true;
+            eventFlags = (uint64_t)CGEventGetFlags(event);
         }
     }
     
@@ -222,6 +235,8 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
     newEvent.processId = eventProcessId;
     newEvent.keyCode = eventKeyCode;
     newEvent.hasKeyCode = hasKeyCode;
+    newEvent.flags = eventFlags;
+    newEvent.hasFlags = hasFlags;
     
     eventQueue.push(newEvent);
     
@@ -288,6 +303,10 @@ Napi::Value GetNextEvent(const Napi::CallbackInfo& info) {
         eventObj.Set("keyCode", Napi::Number::New(env, event.keyCode));
     }
     
+    if (event.hasFlags) {
+        eventObj.Set("flags", Napi::Number::New(env, event.flags));
+    }
+    
     return eventObj;
 }
 
@@ -339,8 +358,9 @@ Napi::Value StartMonitoring(const Napi::CallbackInfo& info) {
     }
     
     // Create event tap for keyboard, mouse, and scroll events
-    CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) | 
+    CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) |
                            CGEventMaskBit(kCGEventKeyUp) |
+                           CGEventMaskBit(kCGEventFlagsChanged) |
                            CGEventMaskBit(kCGEventLeftMouseDown) |
                            CGEventMaskBit(kCGEventLeftMouseUp) |
                            CGEventMaskBit(kCGEventRightMouseDown) |
