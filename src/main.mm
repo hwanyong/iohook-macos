@@ -65,13 +65,17 @@ bool isModificationEnabled = false;
 
 // Event callback function
 CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
-    // Skip processing if emit function is not available to prevent crashes
-    // if (!emitFunction) { // This line is removed as per the edit hint
-    //     return event;
-    // }
+    // Handle Event Tap timeout - re-enable if macOS disabled it
+    if (type == kCGEventTapDisabledByTimeout) {
+        std::cout << "[iohook-macos] Event tap disabled by timeout, re-enabling..." << std::endl;
+        if (eventTap) {
+            CGEventTapEnable(eventTap, true);
+            std::cout << "[iohook-macos] Event tap re-enabled successfully" << std::endl;
+        }
+        return event;
+    }
     
     // Rate limiting for high-frequency events to prevent ThreadSafeFunction overload
-    static double lastProcessTime = 0;
     static int eventsSinceLastSecond = 0;
     static double lastSecondMark = 0;
     
