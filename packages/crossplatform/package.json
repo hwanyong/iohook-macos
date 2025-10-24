@@ -17,11 +17,11 @@
   "author": "uhd",
   "license": "MIT",
   "dependencies": {
-    "@iohook/shared": "*"
+    "@iohook/shared": "^1.0.0"
   },
   "optionalDependencies": {
-    "@iohook/macos": "*",
-    "@iohook/windows": "*"
+    "@iohook/macos": "^1.0.6",
+    "@iohook/windows": "^1.0.0"
   },
   "engines": {
     "node": ">=18.0.0"

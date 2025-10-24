@@ -76,7 +76,7 @@
     "node": ">=14.0.0"
   },
   "dependencies": {
-    "@iohook/shared": "*",
+    "@iohook/shared": "^1.0.0",
     "node-addon-api": "^7.0.0",
     "node-gyp-build": "^4.6.0"
   },

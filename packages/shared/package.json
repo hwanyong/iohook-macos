@@ -1,9 +1,8 @@
 {
   "name": "@iohook/shared",
   "version": "1.0.0",
-  "private": true,
   "type": "module",
-  "description": "Shared utilities for iohook packages (internal use only)",
+  "description": "Shared utilities for iohook packages",
   "main": "index.mjs",
   "exports": {
     ".": "./index.mjs",
@@ -15,10 +14,22 @@
     "*.mjs",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "keywords": [
     "iohook",
-    "internal"
+    "shared",
+    "utilities",
+    "event-emitter",
+    "logger"
   ],
   "author": "hwanyong",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hwanyong/iohook-macos.git",
+    "directory": "packages/shared"
+  }
 }

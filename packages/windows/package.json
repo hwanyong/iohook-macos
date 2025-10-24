@@ -16,7 +16,7 @@
   "author": "uhd",
   "license": "MIT",
   "dependencies": {
-    "@iohook/shared": "*",
+    "@iohook/shared": "^1.0.0",
     "node-gyp-build": "^4.8.0"
   },
   "devDependencies": {

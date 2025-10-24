@@ -29,7 +29,8 @@
     "publish:shared": "npm publish --workspace=packages/shared",
     "publish:macos": "npm publish --workspace=packages/macos",
     "publish:windows": "npm publish --workspace=packages/windows",
-    "publish:crossplatform": "npm publish --workspace=packages/crossplatform"
+    "publish:crossplatform": "npm publish --workspace=packages/crossplatform",
+    "publish:all": "npm run publish:shared && npm run publish:macos && npm run publish:windows && npm run publish:crossplatform"
   },
   "keywords": [
     "iohook",
