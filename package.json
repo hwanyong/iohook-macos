@@ -1,61 +1,43 @@
 {
-  "name": "iohook-macos",
-  "version": "1.0.6",
-  "description": "High-performance macOS system event hook library for Electron applications",
-  "main": "index.js",
-  "types": "index.d.ts",
-  "files": [
-    "index.js",
-    "index.d.ts",
-    "prebuilds/",
-    "bin/",
-    "build/Release/*.node",
-    "LICENSE",
-    "README.md",
-    "README.ko.md",
-    "CHANGELOG.md"
+  "name": "iohook-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Monorepo for iohook packages",
+  "workspaces": [
+    "packages/*"
   ],
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
   "scripts": {
-    "install": "node-gyp-build",
-    "rebuild": "node-gyp rebuild",
-    "prebuild": "prebuildify --napi --strip",
-    "prebuild-arm64": "prebuildify --napi --strip --arch arm64",
-    "prebuild-x64": "prebuildify --napi --strip --arch x64",
-    "prebuild-all": "npm run prebuild-arm64 && npm run prebuild-x64",
-    "test": "node examples/test/test-ci.js",
-    "test-basic": "node examples/test/test.js",
-    "test-permissions": "node examples/test/test-permissions.js",
-    "test-comprehensive": "node examples/test/test-comprehensive.js",
-    "test-performance": "node examples/test/test-performance.js",
-    "electron": "electron examples/electron/electron-main.js",
-    "electron-rebuild": "electron-rebuild",
-    "electron-test": "npm run electron-rebuild && npm run electron",
-    "electron-dev": "electron examples/electron/electron-main.js --enable-logging",
-    "typescript-example": "npx ts-node examples/typescript/typescript-example.ts",
-    "typescript-compile": "npx tsc examples/typescript/typescript-example.ts --outDir build/typescript --moduleResolution node --target es2020",
-    "version": "npm version",
-    "prepublishOnly": "npm run prebuild-all && npm test",
-    "preversion": "npm test",
-    "postversion": "git push && git push --tags",
-    "publish:check": "npm pack --dry-run",
-    "release:patch": "npm version patch",
-    "release:minor": "npm version minor",
-    "release:major": "npm version major"
+    "test": "npm run test --workspaces --if-present",
+    "test:ci": "npm run test --workspace=packages/macos",
+    "test:basic": "npm run test:basic --workspace=packages/macos",
+    "test:permissions": "npm run test:permissions --workspace=packages/macos",
+    "test:comprehensive": "npm run test:comprehensive --workspace=packages/macos",
+    "test:performance": "npm run test:performance --workspace=packages/macos",
+    "test:events": "npm run test:events --workspace=packages/macos",
+    "test:keyboard": "npm run test:keyboard --workspace=packages/macos",
+    "electron": "npm run electron --workspace=packages/macos",
+    "electron:dev": "npm run electron:dev --workspace=packages/macos",
+    "typescript:example": "npm run typescript:example --workspace=packages/macos",
+    "clean": "npm run clean --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "build:macos": "npm run build --workspace=packages/macos",
+    "build:windows": "npm run build --workspace=packages/windows",
+    "prebuild:macos": "npm run prebuild-all --workspace=packages/macos",
+    "prebuild:windows": "npm run prebuild-all --workspace=packages/windows",
+    "install:all": "npm install --workspaces",
+    "publish:shared": "npm publish --workspace=packages/shared",
+    "publish:macos": "npm publish --workspace=packages/macos",
+    "publish:windows": "npm publish --workspace=packages/windows",
+    "publish:crossplatform": "npm publish --workspace=packages/crossplatform"
   },
   "keywords": [
+    "iohook",
+    "event-hook",
+    "system-events",
     "macos",
-    "electron",
-    "event",
-    "hook",
-    "keyboard",
-    "mouse",
-    "native",
-    "cgeventtap",
-    "accessibility"
+    "windows",
+    "electron"
   ],
   "author": "hwanyong",
   "license": "MIT",
@@ -67,23 +49,7 @@
     "url": "https://github.com/hwanyong/iohook-macos/issues"
   },
   "homepage": "https://github.com/hwanyong/iohook-macos#readme",
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "os": [
-    "darwin"
-  ],
   "dependencies": {
-    "node-addon-api": "^7.0.0",
-    "node-gyp-build": "^4.6.0"
-  },
-  "devDependencies": {
-    "@electron/rebuild": "^4.0.1",
-    "@types/node": "^20.0.0",
-    "electron": "^27.0.0",
-    "prebuildify": "^6.0.1",
-    "ts-node": "^10.9.0",
-    "typescript": "^5.0.0"
-  },
-  "gypfile": true
+    "@iohook/macos": "^1.0.6"
+  }
 }

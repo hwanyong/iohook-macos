@@ -37,14 +37,14 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Build prebuilt binary
-      run: npm run prebuild
+    - name: Build prebuilt binary (macOS package)
+      run: npm run prebuild --workspace=packages/macos
     
     - name: Upload binary artifact
       uses: actions/upload-artifact@v4
       with:
         name: prebuilds-${{ matrix.os }}-${{ matrix.arch }}
-        path: prebuilds/
+        path: packages/macos/prebuilds/
         retention-days: 1
 
   publish:
@@ -71,24 +71,24 @@ jobs:
     
     - name: Organize prebuilt binaries
       run: |
-        mkdir -p prebuilds
-        cp -r prebuilds-temp/prebuilds-darwin-arm64/* prebuilds/ || true
-        cp -r prebuilds-temp/prebuilds-darwin-x64/* prebuilds/ || true
+        mkdir -p packages/macos/prebuilds
+        cp -r prebuilds-temp/prebuilds-darwin-arm64/* packages/macos/prebuilds/ || true
+        cp -r prebuilds-temp/prebuilds-darwin-x64/* packages/macos/prebuilds/ || true
         echo "Prebuilt binaries:"
-        find prebuilds -type f
+        find packages/macos/prebuilds -type f
     
     - name: Run tests
-      run: npm test
+      run: npm test --workspace=packages/macos
     
     - name: Verify package contents
       run: |
         echo "Package contents:"
-        npm pack --dry-run
+        npm pack --dry-run --workspace=packages/macos
         echo "Checking prebuilt binaries:"
-        find prebuilds -name "*.node" -type f || echo "No .node files found"
+        find packages/macos/prebuilds -name "*.node" -type f || echo "No .node files found"
     
-    - name: Publish to npm
-      run: npm publish --access public
+    - name: Publish macOS package to npm
+      run: npm publish --workspace=packages/macos --access public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     
@@ -107,7 +107,7 @@ jobs:
           ## Installation
           
           ```bash
-          npm install iohook-macos@${{ github.ref_name }}
+          npm install @iohook/macos@${{ github.ref_name }}
           ```
           
           ## Features

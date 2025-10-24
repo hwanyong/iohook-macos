@@ -63,14 +63,14 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Rebuild native module
-      run: npm run rebuild
+    - name: Rebuild native module (macOS)
+      run: npm run rebuild --workspace=packages/macos
       
     - name: Test native module
-      run: npm test
+      run: npm test --workspace=packages/macos
       
     - name: Verify binary exists
       run: |
         echo "Checking for native binary..."
-        find . -name "*.node" -type f
-        ls -la bin/ || echo "No bin directory" 
+        find packages/macos -name "*.node" -type f
+        ls -la packages/macos/bin/ || echo "No bin directory"

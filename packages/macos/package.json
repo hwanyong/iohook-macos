@@ -1,0 +1,92 @@
+{
+  "name": "@iohook/macos",
+  "version": "1.0.6",
+  "type": "module",
+  "description": "High-performance macOS system event hook library",
+  "main": "index.mjs",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.mjs"
+    }
+  },
+  "files": [
+    "index.mjs",
+    "index.d.ts",
+    "prebuilds/",
+    "bin/",
+    "build/Release/*.node",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "install": "node-gyp-build",
+    "build": "node-gyp rebuild",
+    "rebuild": "node-gyp rebuild",
+    "prebuild": "prebuildify --napi --strip",
+    "prebuild-arm64": "prebuildify --napi --strip --arch arm64",
+    "prebuild-x64": "prebuildify --napi --strip --arch x64",
+    "prebuild-all": "npm run prebuild-arm64 && npm run prebuild-x64",
+    "test": "node examples/test/test-ci.mjs",
+    "test:basic": "node examples/test/test.mjs",
+    "test:permissions": "node examples/test/test-permissions.mjs",
+    "test:comprehensive": "node examples/test/test-comprehensive.mjs",
+    "test:performance": "node examples/test/test-performance.mjs",
+    "test:events": "node examples/test/test-events.mjs",
+    "test:keyboard": "node examples/test/test-keyboard-events.mjs",
+    "test:filtering": "node examples/test/test-event-filtering.mjs",
+    "test:modification": "node examples/test/test-event-modification.mjs",
+    "test:detailed": "node examples/test/test-detailed-events.mjs",
+    "test:modifier": "node examples/test/test-modifier-keys.mjs",
+    "test:hardware": "node examples/test/test-hardware-control.mjs",
+    "electron": "electron examples/electron/electron-main.js",
+    "electron:rebuild": "electron-rebuild",
+    "electron:test": "npm run electron:rebuild && npm run electron",
+    "electron:dev": "electron examples/electron/electron-main.js --enable-logging",
+    "typescript:example": "npx ts-node examples/typescript/typescript-example.ts",
+    "typescript:compile": "npx tsc examples/typescript/typescript-example.ts --outDir build/typescript --moduleResolution node --target es2020",
+    "clean": "rm -rf build prebuilds"
+  },
+  "keywords": [
+    "macos",
+    "electron",
+    "event",
+    "hook",
+    "keyboard",
+    "mouse",
+    "native"
+  ],
+  "author": "hwanyong",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hwanyong/iohook-macos.git",
+    "directory": "packages/macos"
+  },
+  "os": [
+    "darwin"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "@iohook/shared": "*",
+    "node-addon-api": "^7.0.0",
+    "node-gyp-build": "^4.6.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
+    "@types/node": "^20.0.0",
+    "electron": "^27.0.0",
+    "prebuildify": "^6.0.1",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "gypfile": true
+}

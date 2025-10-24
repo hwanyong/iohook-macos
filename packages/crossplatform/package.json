@@ -1,0 +1,29 @@
+{
+  "name": "@iohook/crossplatform",
+  "version": "1.0.0",
+  "description": "Cross-platform wrapper for iohook - automatically selects the correct platform-specific implementation",
+  "type": "module",
+  "main": "index.mjs",
+  "keywords": [
+    "iohook",
+    "crossplatform",
+    "keyboard",
+    "mouse",
+    "hook",
+    "event",
+    "macos",
+    "windows"
+  ],
+  "author": "uhd",
+  "license": "MIT",
+  "dependencies": {
+    "@iohook/shared": "*"
+  },
+  "optionalDependencies": {
+    "@iohook/macos": "*",
+    "@iohook/windows": "*"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

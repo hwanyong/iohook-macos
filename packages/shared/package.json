@@ -1,0 +1,24 @@
+{
+  "name": "@iohook/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared utilities for iohook packages (internal use only)",
+  "main": "index.mjs",
+  "exports": {
+    ".": "./index.mjs",
+    "./event-emitter": "./event-emitter.mjs",
+    "./event-types": "./event-types.mjs",
+    "./logger": "./logger.mjs"
+  },
+  "files": [
+    "*.mjs",
+    "README.md"
+  ],
+  "keywords": [
+    "iohook",
+    "internal"
+  ],
+  "author": "hwanyong",
+  "license": "MIT"
+}

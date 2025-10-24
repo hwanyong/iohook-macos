@@ -40,10 +40,10 @@ jobs:
       run: npm ci
     
     - name: Run tests
-      run: npm test
+      run: npm test --workspace=packages/macos
     
     - name: Build native module
-      run: npm run rebuild
+      run: npm run rebuild --workspace=packages/macos
     
     - name: Configure git
       run: |
@@ -58,13 +58,13 @@ jobs:
     - name: Verify package contents
       run: |
         echo "Package contents:"
-        npm run publish:check
+        npm pack --dry-run --workspace=packages/macos
         echo "Checking native binary:"
-        find . -name "*.node" -type f || echo "No .node files found"
-        ls -la bin/ || echo "No bin directory"
+        find packages/macos -name "*.node" -type f || echo "No .node files found"
+        ls -la packages/macos/bin/ || echo "No bin directory"
     
-    - name: Publish to npm
-      run: npm publish
+    - name: Publish macOS package to npm
+      run: npm publish --workspace=packages/macos
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     
@@ -88,7 +88,7 @@ jobs:
           ## Installation
           
           ```bash
-          npm install iohook-macos@${{ env.NEW_VERSION }}
+          npm install @iohook/macos@${{ env.NEW_VERSION }}
           ```
           
           ## Features

@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Development files
+*.log
+npm-debug.log*
+.DS_Store
+
+# Test files
+test/
+*.test.mjs
+*.spec.mjs
+
+# Development tools
+.vscode/
+.idea/

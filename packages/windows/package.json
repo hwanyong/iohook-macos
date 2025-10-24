@@ -1,0 +1,28 @@
+{
+  "name": "@iohook/windows",
+  "version": "1.0.0",
+  "description": "Windows native event hook library",
+  "type": "module",
+  "main": "index.mjs",
+  "private": true,
+  "keywords": [
+    "iohook",
+    "windows",
+    "keyboard",
+    "mouse",
+    "hook",
+    "event"
+  ],
+  "author": "uhd",
+  "license": "MIT",
+  "dependencies": {
+    "@iohook/shared": "*",
+    "node-gyp-build": "^4.8.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^10.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
