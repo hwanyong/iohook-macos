@@ -1,6 +1,6 @@
 {
   "name": "@iohook/shared",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "type": "module",
   "description": "Shared utilities for iohook packages",
   "main": "./index.cjs",

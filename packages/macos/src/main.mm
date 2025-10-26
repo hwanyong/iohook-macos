@@ -18,6 +18,13 @@ struct SimpleEvent {
     bool hasKeyCode;
     uint64_t flags;  // Modifier flags for flagsChanged events
     bool hasFlags;
+    // Parsed modifier key states
+    bool shift;
+    bool control;
+    bool option;
+    bool command;
+    bool capsLock;
+    bool fn;
 };
 
 // Thread-safe event queue
@@ -214,13 +221,19 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         }
     }
     
-    // Extract flags for flagsChanged events
-    if (type == kCGEventFlagsChanged) {
-        if (event) {
-            hasFlags = true;
-            eventFlags = (uint64_t)CGEventGetFlags(event);
-        }
+    // Extract flags for ALL events (not just flagsChanged)
+    if (event) {
+        eventFlags = (uint64_t)CGEventGetFlags(event);
+        hasFlags = true;
     }
+    
+    // Parse modifier key states from flags
+    bool shift = (eventFlags & kCGEventFlagMaskShift) != 0;
+    bool control = (eventFlags & kCGEventFlagMaskControl) != 0;
+    bool option = (eventFlags & kCGEventFlagMaskAlternate) != 0;
+    bool command = (eventFlags & kCGEventFlagMaskCommand) != 0;
+    bool capsLock = (eventFlags & kCGEventFlagMaskAlphaShift) != 0;
+    bool fn = (eventFlags & kCGEventFlagMaskSecondaryFn) != 0;
     
     // Add to queue safely
     std::lock_guard<std::mutex> lock(queueMutex);
@@ -241,6 +254,13 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
     newEvent.hasKeyCode = hasKeyCode;
     newEvent.flags = eventFlags;
     newEvent.hasFlags = hasFlags;
+    // Store parsed modifier states
+    newEvent.shift = shift;
+    newEvent.control = control;
+    newEvent.option = option;
+    newEvent.command = command;
+    newEvent.capsLock = capsLock;
+    newEvent.fn = fn;
     
     eventQueue.push(newEvent);
     
@@ -310,6 +330,16 @@ Napi::Value GetNextEvent(const Napi::CallbackInfo& info) {
     if (event.hasFlags) {
         eventObj.Set("flags", Napi::Number::New(env, event.flags));
     }
+    
+    // Create modifiers object with parsed modifier key states
+    Napi::Object modifiers = Napi::Object::New(env);
+    modifiers.Set("shift", Napi::Boolean::New(env, event.shift));
+    modifiers.Set("control", Napi::Boolean::New(env, event.control));
+    modifiers.Set("option", Napi::Boolean::New(env, event.option));
+    modifiers.Set("command", Napi::Boolean::New(env, event.command));
+    modifiers.Set("capsLock", Napi::Boolean::New(env, event.capsLock));
+    modifiers.Set("fn", Napi::Boolean::New(env, event.fn));
+    eventObj.Set("modifiers", modifiers);
     
     return eventObj;
 }

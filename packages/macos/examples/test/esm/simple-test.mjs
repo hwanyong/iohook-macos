@@ -28,8 +28,15 @@ console.log('📡 2. 이벤트 리스너 등록 중...')
 
 iohook.on('keyDown', (event) => {
   const timestamp = new Date(event.timestamp / 1000000).toISOString()
+  const mods = []
+  if (event.modifiers.command) mods.push('Cmd')
+  if (event.modifiers.option) mods.push('Opt')
+  if (event.modifiers.control) mods.push('Ctrl')
+  if (event.modifiers.shift) mods.push('Shift')
+  
   console.log('⌨️  키 입력:', {
     keyCode: event.keyCode,
+    modifiers: mods.length > 0 ? mods.join('+') : 'none',
     timestamp,
     processId: event.processId,
     type: event.type,
@@ -39,9 +46,16 @@ iohook.on('keyDown', (event) => {
 
 iohook.on('leftMouseDown', (event) => {
   const timestamp = new Date(event.timestamp / 1000000).toISOString()
+  const mods = []
+  if (event.modifiers.command) mods.push('Cmd')
+  if (event.modifiers.option) mods.push('Opt')
+  if (event.modifiers.control) mods.push('Ctrl')
+  if (event.modifiers.shift) mods.push('Shift')
+  
   console.log('🖱️  마우스 클릭:', {
     x: event.x,
     y: event.y,
+    modifiers: mods.length > 0 ? mods.join('+') : 'none',
     timestamp,
     processId: event.processId,
     type: event.type
