@@ -1,17 +1,21 @@
 {
   "name": "@iohook/macos",
-  "version": "1.0.6",
+  "version": "1.0.8",
   "type": "module",
   "description": "High-performance macOS system event hook library",
-  "main": "index.mjs",
-  "types": "index.d.ts",
+  "main": "./index.cjs",
+  "module": "./index.mjs",
+  "types": "./index.d.ts",
   "exports": {
     ".": {
       "types": "./index.d.ts",
+      "require": "./index.cjs",
+      "import": "./index.mjs",
       "default": "./index.mjs"
     }
   },
   "files": [
+    "index.cjs",
     "index.mjs",
     "index.d.ts",
     "prebuilds/",
@@ -33,6 +37,7 @@
     "prebuild-arm64": "prebuildify --napi --strip --arch arm64",
     "prebuild-x64": "prebuildify --napi --strip --arch x64",
     "prebuild-all": "npm run prebuild-arm64 && npm run prebuild-x64",
+    "prepublishOnly": "npm run prebuild-all && npm test",
     "test": "node examples/test/test-ci.mjs",
     "test:basic": "node examples/test/test.mjs",
     "test:permissions": "node examples/test/test-permissions.mjs",
@@ -51,6 +56,11 @@
     "electron:dev": "electron examples/electron/electron-main.js --enable-logging",
     "typescript:example": "npx ts-node examples/typescript/typescript-example.ts",
     "typescript:compile": "npx tsc examples/typescript/typescript-example.ts --outDir build/typescript --moduleResolution node --target es2020",
+    "example:electron-cjs": "node examples/electron/cjs/simple-cli.cjs",
+    "example:electron-esm": "node examples/electron/esm/simple-cli.mjs",
+    "example:test-cjs": "node examples/test/cjs/simple-test.cjs",
+    "example:test-esm": "node examples/test/esm/simple-test.mjs",
+    "example:typescript": "npx ts-node examples/typescript/simple-example.ts",
     "clean": "rm -rf build prebuilds"
   },
   "keywords": [
@@ -76,6 +86,7 @@
     "node": ">=14.0.0"
   },
   "dependencies": {
+    "@iohook/macos": "^1.0.8",
     "@iohook/shared": "^1.0.0",
     "node-addon-api": "^7.0.0",
     "node-gyp-build": "^4.6.0"

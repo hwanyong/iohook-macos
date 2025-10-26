@@ -1,17 +1,31 @@
 {
   "name": "@iohook/shared",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "type": "module",
   "description": "Shared utilities for iohook packages",
-  "main": "index.mjs",
+  "main": "./index.cjs",
+  "module": "./index.mjs",
   "exports": {
-    ".": "./index.mjs",
-    "./event-emitter": "./event-emitter.mjs",
-    "./event-types": "./event-types.mjs",
-    "./logger": "./logger.mjs"
+    ".": {
+      "require": "./index.cjs",
+      "import": "./index.mjs"
+    },
+    "./event-emitter": {
+      "require": "./event-emitter.cjs",
+      "import": "./event-emitter.mjs"
+    },
+    "./event-types": {
+      "require": "./event-types.cjs",
+      "import": "./event-types.mjs"
+    },
+    "./logger": {
+      "require": "./logger.cjs",
+      "import": "./logger.mjs"
+    }
   },
   "files": [
     "*.mjs",
+    "*.cjs",
     "README.md"
   ],
   "publishConfig": {

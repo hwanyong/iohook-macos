@@ -1,10 +1,10 @@
-import EventEmitter from 'events'
-import { CGEventTypes, EventTypeToInt } from './event-types.mjs'
+const EventEmitter = require('events')
+const { CGEventTypes, EventTypeToInt } = require('./event-types.cjs')
 
 /**
- * IOHook 공통 EventEmitter 클래스
+ * IOHook 공통 EventEmitter 클래스 (CommonJS)
  */
-export class IOHookEventEmitter extends EventEmitter {
+class IOHookEventEmitter extends EventEmitter {
   constructor() {
     super()
     this._isMonitoring = false
@@ -88,3 +88,5 @@ export class IOHookEventEmitter extends EventEmitter {
     this._isMonitoring = status
   }
 }
+
+module.exports = { IOHookEventEmitter }
