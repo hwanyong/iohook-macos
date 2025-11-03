@@ -141,3 +141,4 @@ __pycache__/
 .env.test.local
 .env.production.local
 .mcp-debug-tools
+preversion/
