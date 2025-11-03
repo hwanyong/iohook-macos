@@ -62,6 +62,25 @@ interface EventData {
   flags?: number
   /** Whether flags property is available */
   hasFlags?: boolean
+  /**
+   * Parsed modifier key states (available on all events)
+   * Provides boolean flags for easy access to modifier key states
+   * without manual bitwise operations
+   */
+  modifiers: {
+    /** Shift key state */
+    shift: boolean
+    /** Control key state */
+    control: boolean
+    /** Option (Alt) key state */
+    option: boolean
+    /** Command (⌘) key state */
+    command: boolean
+    /** Caps Lock state */
+    capsLock: boolean
+    /** Function (fn) key state */
+    fn: boolean
+  }
 }
 
 // Accessibility permissions check result

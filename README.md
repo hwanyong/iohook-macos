@@ -39,6 +39,7 @@ By offering a cohesive development experience with consistent patterns across ke
 - **🎹 Keyboard Events**: `keyDown`, `keyUp`, `flagsChanged`
 - **🖱️ Mouse Events**: Click, movement, drag (left/right/other buttons)
 - **🌀 Scroll Events**: Mouse wheel and trackpad gestures
+- **⌨️ Modifier Keys**: Automatic parsing of modifier key states (Shift, Control, Option, Command, Caps Lock, Fn)
 - **🔒 Security**: Built-in accessibility permission handling
 - **⚡ Performance**: Optimized polling mode with configurable rates
 - **🎛️ Filtering**: Process ID, coordinate range, and event type filters
@@ -125,6 +126,14 @@ interface EventData {
     processId?: number    // Source process ID
     keyCode?: number      // Key code (keyboard events)
     hasKeyCode?: boolean  // Whether keyCode is available
+    modifiers: {          // Parsed modifier key states
+        shift: boolean
+        control: boolean
+        option: boolean
+        command: boolean
+        capsLock: boolean
+        fn: boolean
+    }
 }
 
 interface AccessibilityPermissionsResult {
@@ -253,6 +262,41 @@ iohook.on('event', (event) => {
     console.log(`Event type: ${event.type}`)
 })
 ```
+
+### Modifier Keys
+
+All events include a `modifiers` object with parsed modifier key states, eliminating the need for manual bitwise operations:
+
+```javascript
+// Easy access to modifier key states
+iohook.on('keyDown', (event) => {
+    if (event.modifiers.shift && event.modifiers.command) {
+        console.log('Shift + Command pressed')
+    }
+    
+    if (event.modifiers.option) {
+        console.log('Option key is pressed')
+    }
+})
+
+// Before (complex bitwise operations)
+const shiftPressed = (event.flags & 0x00020000) !== 0
+const cmdPressed = (event.flags & 0x00100000) !== 0
+
+// After (clean and intuitive)
+const shiftPressed = event.modifiers.shift
+const cmdPressed = event.modifiers.command
+```
+
+**Available modifier keys:**
+- `shift` - Shift key state
+- `control` - Control key state
+- `option` - Option (Alt) key state
+- `command` - Command (⌘) key state
+- `capsLock` - Caps Lock state
+- `fn` - Function key state
+
+The `modifiers` object is available on **all event types** (keyboard, mouse, scroll, etc.), not just `flagsChanged` events.
 
 ### Event Filtering
 

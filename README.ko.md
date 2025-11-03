@@ -39,6 +39,7 @@
 - **🎹 키보드 이벤트**: `keyDown`, `keyUp`, `flagsChanged`
 - **🖱️ 마우스 이벤트**: 클릭, 이동, 드래그 (좌/우/기타 버튼)
 - **🌀 스크롤 이벤트**: 마우스 휠 및 트랙패드 제스처
+- **⌨️ 수정키**: 수정키 상태 자동 파싱 (Shift, Control, Option, Command, Caps Lock, Fn)
 - **🔒 보안**: 내장된 접근성 권한 처리
 - **⚡ 성능**: 설정 가능한 최적화된 폴링 모드
 - **🎛️ 필터링**: 프로세스 ID, 좌표 범위, 이벤트 타입 필터
@@ -125,6 +126,14 @@ interface EventData {
     processId?: number    // 소스 프로세스 ID
     keyCode?: number      // 키 코드 (키보드 이벤트)
     hasKeyCode?: boolean  // keyCode 사용 가능 여부
+    modifiers: {          // 파싱된 수정키 상태
+        shift: boolean
+        control: boolean
+        option: boolean
+        command: boolean
+        capsLock: boolean
+        fn: boolean
+    }
 }
 
 interface AccessibilityPermissionsResult {
@@ -253,6 +262,41 @@ iohook.on('event', (event) => {
     console.log(`이벤트 타입: ${event.type}`)
 })
 ```
+
+### 수정키
+
+모든 이벤트에는 수정키 상태가 파싱된 `modifiers` 객체가 포함되어, 복잡한 비트 연산 없이 간편하게 사용할 수 있습니다:
+
+```javascript
+// 수정키 상태 간편 접근
+iohook.on('keyDown', (event) => {
+    if (event.modifiers.shift && event.modifiers.command) {
+        console.log('Shift + Command 눌림')
+    }
+    
+    if (event.modifiers.option) {
+        console.log('Option 키가 눌려있습니다')
+    }
+})
+
+// 이전 방식 (복잡한 비트 연산)
+const shiftPressed = (event.flags & 0x00020000) !== 0
+const cmdPressed = (event.flags & 0x00100000) !== 0
+
+// 새로운 방식 (깔끔하고 직관적)
+const shiftPressed = event.modifiers.shift
+const cmdPressed = event.modifiers.command
+```
+
+**사용 가능한 수정키:**
+- `shift` - Shift 키 상태
+- `control` - Control 키 상태
+- `option` - Option (Alt) 키 상태
+- `command` - Command (⌘) 키 상태
+- `capsLock` - Caps Lock 상태
+- `fn` - Function 키 상태
+
+`modifiers` 객체는 `flagsChanged` 이벤트뿐만 아니라 **모든 이벤트 타입**(키보드, 마우스, 스크롤 등)에서 사용 가능합니다.
 
 ### 이벤트 필터링
 

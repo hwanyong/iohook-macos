@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- ✨ **Modifiers Object**: All events now include a parsed `modifiers` object with automatic modifier key state detection
+  - Provides boolean flags for: `shift`, `control`, `option`, `command`, `capsLock`, `fn`
+  - Available on all event types (keyboard, mouse, scroll, etc.), not just `flagsChanged`
+  - Eliminates need for manual bitwise operations on flags
+  - Improves developer experience with cleaner, more intuitive API
+  - Example: `event.modifiers.shift` instead of `(event.flags & 0x00020000) !== 0`
 - Initial release of iohook-macos
 - macOS system event hook library for Electron applications
 - Support for keyboard, mouse, and scroll events
