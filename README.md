@@ -218,8 +218,12 @@ npm run typescript-compile
 
 | Method | Description | Parameters |
 |--------|-------------|------------|
-| `setEventFilter(options)` | Configure event filters | `options: EventFilterOptions` |
-| `clearEventFilter()` | Clear all filters | - |
+| `setEventFilter(options)` | Configure event filters (unified interface) | `options: EventFilterOptions` |
+| `setProcessFilter(processId, exclude)` | Filter by process ID | `processId: number, exclude: boolean` |
+| `setCoordinateFilter(minX, minY, maxX, maxY)` | Filter by screen coordinates | `minX, minY, maxX, maxY: number` |
+| `setEventTypeFilter(allowKeyboard, allowMouse, allowScroll)` | Filter by event types | All parameters: `boolean` |
+| `clearFilters()` | Clear all filters | - |
+| `clearEventFilter()` | Clear all filters (deprecated, use `clearFilters()`) | - |
 
 ## 🔒 Accessibility Permissions
 
@@ -233,9 +237,12 @@ console.log(result.message)        // descriptive message
 
 // Request permissions (shows system dialog)
 if (!result.hasPermissions) {
-    iohook.requestAccessibilityPermissions()
+    const requestResult = iohook.requestAccessibilityPermissions()
+    console.log(requestResult.message) // Shows dialog to user
 }
 ```
+
+**Note:** The `requestAccessibilityPermissions()` method will open the System Preferences accessibility panel if permissions are not already granted. Users must manually add your application to the accessibility list.
 
 **Manual Setup:**
 1. Open **System Preferences** → **Security & Privacy** → **Privacy**
@@ -301,27 +308,27 @@ The `modifiers` object is available on **all event types** (keyboard, mouse, scr
 ### Event Filtering
 
 ```javascript
-// Filter by process ID
+// Unified filter interface (recommended for complex filters)
 iohook.setEventFilter({
     filterByProcessId: true,
     targetProcessId: 1234,
-    excludeProcessId: false // Include only this process
-})
-
-// Filter by screen coordinates
-iohook.setEventFilter({
+    excludeProcessId: false, // Include only this process
     filterByCoordinates: true,
     minX: 0, maxX: 1920,
-    minY: 0, maxY: 1080
-})
-
-// Filter by event types
-iohook.setEventFilter({
+    minY: 0, maxY: 1080,
     filterByEventType: true,
     allowKeyboard: true,
     allowMouse: true,
     allowScroll: false
 })
+
+// Or use direct native methods for single filters
+iohook.setProcessFilter(1234, false) // Include only process 1234
+iohook.setCoordinateFilter(0, 0, 1920, 1080) // Screen region
+iohook.setEventTypeFilter(true, true, false) // Keyboard, mouse, no scroll
+
+// Clear all filters
+iohook.clearFilters()
 ```
 
 ## 🎮 Electron Integration

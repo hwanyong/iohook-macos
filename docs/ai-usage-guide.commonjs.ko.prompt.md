@@ -130,7 +130,7 @@ if (iohook.isMonitoring()) {
 
 ## 이벤트 필터링
 
-### 프로세스 기반 필터링
+### 통합 필터 인터페이스
 ```javascript
 // 특정 프로세스만 모니터링
 iohook.setEventFilter({
@@ -139,26 +139,20 @@ iohook.setEventFilter({
     excludeProcessId: false // 이 프로세스만 포함
 })
 
-// 특정 프로세스 제외  
+// 특정 프로세스 제외
 iohook.setEventFilter({
     filterByProcessId: true,
     targetProcessId: 5678,
     excludeProcessId: true // 이 프로세스 제외
 })
-```
 
-### 좌표 기반 필터링
-```javascript
 // 특정 화면 영역만 모니터링
 iohook.setEventFilter({
     filterByCoordinates: true,
     minX: 0, maxX: 1920,    // 화면 너비 범위
     minY: 0, maxY: 1080     // 화면 높이 범위
 })
-```
 
-### 이벤트 타입 필터링
-```javascript
 // 이벤트 카테고리별 필터링
 iohook.setEventFilter({
     filterByEventType: true,
@@ -166,9 +160,29 @@ iohook.setEventFilter({
     allowMouse: false,       // 마우스 이벤트 차단
     allowScroll: true        // 스크롤 이벤트 허용
 })
+```
 
-// 모든 필터 제거
-iohook.clearEventFilter()
+### 직접 네이티브 필터 메서드
+```javascript
+// 직접 프로세스 필터링 (더 효율적)
+iohook.setProcessFilter(1234, false)  // 프로세스 1234만 포함
+iohook.setProcessFilter(5678, true)   // 프로세스 5678 제외
+
+// 직접 좌표 필터링
+iohook.setCoordinateFilter(0, 0, 1920, 1080)  // 화면 경계
+
+// 직접 이벤트 타입 필터링
+iohook.setEventTypeFilter(true, false, true)  // 키보드 + 스크롤만
+iohook.setEventTypeFilter(false, true, false) // 마우스 이벤트만
+```
+
+### 필터 제거
+```javascript
+// 모든 필터 제거 (권장)
+iohook.clearFilters()
+
+// DEPRECATED: clearFilters() 사용 권장
+iohook.clearEventFilter()  // 하위 호환성을 위해 여전히 작동함
 ```
 
 ## Electron 통합
@@ -248,8 +262,11 @@ function ensurePermissions() {
     if (!result.hasPermissions) {
         console.log('상태:', result.message)
         
-        // 시스템 권한 다이얼로그 표시
-        iohook.requestAccessibilityPermissions()
+        // 접근성 권한 요청
+        // 시스템 환경설정 > 개인정보 보호 및 보안 > 손쉬운 사용을 엽니다
+        const requestResult = iohook.requestAccessibilityPermissions()
+        console.log('요청 결과:', requestResult.message)
+        // 반환값: { hasPermissions: false, message: "시스템 환경설정을 여는 중..." }
         
         console.log('접근성 권한을 허용하고 앱을 재시작해 주세요')
         return false
@@ -261,6 +278,16 @@ function ensurePermissions() {
 // 모니터링 시작 전 사용
 if (ensurePermissions()) {
     iohook.startMonitoring()
+}
+```
+
+### 권한 결과 객체
+```javascript
+// checkAccessibilityPermissions()와 requestAccessibilityPermissions()
+// 모두 같은 구조를 반환합니다:
+const result = {
+    hasPermissions: false,  // boolean - 현재 권한 상태
+    message: "시스템 환경설정을 여는 중..."  // string - 상태 설명
 }
 ```
 

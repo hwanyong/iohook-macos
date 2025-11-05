@@ -231,13 +231,43 @@ interface MacOSEventHook extends Omit<EventEmitter, 'emit' | 'on'> {
   
   // Event filtering
   /**
-   * Set event filtering options
+   * Set event filtering options (unified interface)
    * @param options Filtering configuration
    */
   setEventFilter(options: EventFilterOptions): void
   
   /**
+   * Set process ID filter
+   * @param processId Target process ID
+   * @param exclude Whether to exclude (true) or include only (false) the target process
+   */
+  setProcessFilter(processId: number, exclude: boolean): void
+  
+  /**
+   * Set coordinate range filter
+   * @param minX Minimum X coordinate
+   * @param minY Minimum Y coordinate
+   * @param maxX Maximum X coordinate
+   * @param maxY Maximum Y coordinate
+   */
+  setCoordinateFilter(minX: number, minY: number, maxX: number, maxY: number): void
+  
+  /**
+   * Set event type filter
+   * @param allowKeyboard Allow keyboard events
+   * @param allowMouse Allow mouse events
+   * @param allowScroll Allow scroll events
+   */
+  setEventTypeFilter(allowKeyboard: boolean, allowMouse: boolean, allowScroll: boolean): void
+  
+  /**
    * Clear all event filters
+   */
+  clearFilters(): void
+  
+  /**
+   * Clear all event filters (backward compatibility alias)
+   * @deprecated Use clearFilters() instead
    */
   clearEventFilter(): void
   

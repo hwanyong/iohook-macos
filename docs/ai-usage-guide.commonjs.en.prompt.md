@@ -130,7 +130,7 @@ if (iohook.isMonitoring()) {
 
 ## Event Filtering
 
-### Process-based Filtering
+### Unified Filter Interface
 ```javascript
 // Monitor only specific process
 iohook.setEventFilter({
@@ -139,26 +139,20 @@ iohook.setEventFilter({
     excludeProcessId: false // Include only this process
 })
 
-// Exclude specific process  
+// Exclude specific process
 iohook.setEventFilter({
     filterByProcessId: true,
     targetProcessId: 5678,
     excludeProcessId: true // Exclude this process
 })
-```
 
-### Coordinate-based Filtering
-```javascript
 // Monitor only specific screen region
 iohook.setEventFilter({
     filterByCoordinates: true,
     minX: 0, maxX: 1920,    // Screen width range
     minY: 0, maxY: 1080     // Screen height range
 })
-```
 
-### Event Type Filtering
-```javascript
 // Filter by event categories
 iohook.setEventFilter({
     filterByEventType: true,
@@ -166,9 +160,29 @@ iohook.setEventFilter({
     allowMouse: false,       // Block mouse events
     allowScroll: true        // Allow scroll events
 })
+```
 
-// Clear all filters
-iohook.clearEventFilter()
+### Direct Native Filter Methods
+```javascript
+// Direct process filtering (more efficient)
+iohook.setProcessFilter(1234, false)  // Include only process 1234
+iohook.setProcessFilter(5678, true)   // Exclude process 5678
+
+// Direct coordinate filtering
+iohook.setCoordinateFilter(0, 0, 1920, 1080)  // Screen bounds
+
+// Direct event type filtering
+iohook.setEventTypeFilter(true, false, true)  // Keyboard + Scroll only
+iohook.setEventTypeFilter(false, true, false) // Mouse events only
+```
+
+### Clearing Filters
+```javascript
+// Clear all filters (recommended)
+iohook.clearFilters()
+
+// DEPRECATED: Use clearFilters() instead
+iohook.clearEventFilter()  // Still works for backward compatibility
 ```
 
 ## Electron Integration
@@ -248,8 +262,11 @@ function ensurePermissions() {
     if (!result.hasPermissions) {
         console.log('Status:', result.message)
         
-        // Show system permission dialog
-        iohook.requestAccessibilityPermissions()
+        // Request accessibility permissions
+        // This opens System Preferences > Privacy & Security > Accessibility
+        const requestResult = iohook.requestAccessibilityPermissions()
+        console.log('Request result:', requestResult.message)
+        // Returns: { hasPermissions: false, message: "Opening System Preferences..." }
         
         console.log('Please grant accessibility permissions and restart the app')
         return false
@@ -261,6 +278,16 @@ function ensurePermissions() {
 // Use before starting monitoring
 if (ensurePermissions()) {
     iohook.startMonitoring()
+}
+```
+
+### Permission Result Object
+```javascript
+// Both checkAccessibilityPermissions() and requestAccessibilityPermissions()
+// return the same structure:
+const result = {
+    hasPermissions: false,  // boolean - current permission status
+    message: "Opening System Preferences..."  // string - status description
 }
 ```
 

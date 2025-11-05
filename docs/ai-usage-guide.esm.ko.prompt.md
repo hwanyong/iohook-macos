@@ -116,12 +116,44 @@ export const createCoordinateFilter = (minX, maxX, minY, maxY) => ({
     minX, maxX, minY, maxY
 })
 
+export const createEventTypeFilter = (allowKeyboard, allowMouse, allowScroll) => ({
+    filterByEventType: true,
+    allowKeyboard,
+    allowMouse,
+    allowScroll
+})
+
 // main.mjs
 import iohook from 'iohook-macos'
-import { createProcessFilter, createCoordinateFilter } from './filters.mjs'
+import { createProcessFilter, createCoordinateFilter, createEventTypeFilter } from './filters.mjs'
 
+// 통합 필터 인터페이스 사용
 iohook.setEventFilter(createProcessFilter(1234))
 iohook.setEventFilter(createCoordinateFilter(0, 1920, 0, 1080))
+iohook.setEventFilter(createEventTypeFilter(true, false, true))
+```
+
+### 직접 네이티브 필터 메서드
+```javascript
+// 직접 필터 메서드 (더 효율적)
+import iohook from 'iohook-macos'
+
+// 직접 프로세스 필터링
+iohook.setProcessFilter(1234, false)  // 프로세스 1234만 포함
+iohook.setProcessFilter(5678, true)   // 프로세스 5678 제외
+
+// 직접 좌표 필터링
+iohook.setCoordinateFilter(0, 0, 1920, 1080)  // 화면 경계
+
+// 직접 이벤트 타입 필터링
+iohook.setEventTypeFilter(true, false, true)  // 키보드 + 스크롤만
+iohook.setEventTypeFilter(false, true, false) // 마우스 이벤트만
+
+// 모든 필터 제거 (권장)
+iohook.clearFilters()
+
+// DEPRECATED: clearFilters() 사용 권장
+iohook.clearEventFilter()  // 하위 호환성을 위해 여전히 작동함
 ```
 
 ## ESM을 사용한 Electron 통합
@@ -299,6 +331,12 @@ const startMonitoring = async () => {
     try {
         const permissions = iohook.checkAccessibilityPermissions()
         if (!permissions.hasPermissions) {
+            // 접근성 권한 요청
+            // 시스템 환경설정 > 개인정보 보호 및 보안 > 손쉬운 사용을 엽니다
+            const requestResult = iohook.requestAccessibilityPermissions()
+            console.log('요청 결과:', requestResult.message)
+            // 반환값: { hasPermissions: false, message: "시스템 환경설정을 여는 중..." }
+            
             throw new PermissionError('접근성 권한이 허용되지 않았습니다')
         }
         
@@ -307,6 +345,14 @@ const startMonitoring = async () => {
         handleError(error)
     }
 }
+
+// 권한 결과 객체 구조
+// checkAccessibilityPermissions()와 requestAccessibilityPermissions()
+// 모두 같은 구조를 반환합니다:
+// {
+//     hasPermissions: false,  // boolean - 현재 권한 상태
+//     message: "시스템 환경설정을 여는 중..."  // string - 상태 설명
+// }
 ```
 
 ## ESM용 이벤트 참조

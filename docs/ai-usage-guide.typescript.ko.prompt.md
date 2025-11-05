@@ -238,9 +238,9 @@ function createProcessFilter(processId: number, exclude: boolean = false): Event
 }
 
 function createCoordinateFilter(
-    minX: number, 
-    maxX: number, 
-    minY: number, 
+    minX: number,
+    maxX: number,
+    minY: number,
     maxY: number
 ): EventFilterOptions {
     return {
@@ -265,10 +265,41 @@ function createEventTypeFilter(
     }
 }
 
-// 사용법
+// 통합 필터 인터페이스를 사용한 사용법
 iohook.setEventFilter(createProcessFilter(1234, false))
 iohook.setEventFilter(createCoordinateFilter(0, 1920, 0, 1080))
 iohook.setEventFilter(createEventTypeFilter(true, false, true))
+```
+
+### 직접 네이티브 필터 메서드
+```typescript
+// 타입 안전한 직접 필터 메서드 (더 효율적)
+// 프로세스 필터링
+iohook.setProcessFilter(1234, false)  // 프로세스 1234만 포함
+iohook.setProcessFilter(5678, true)   // 프로세스 5678 제외
+
+// 좌표 필터링
+iohook.setCoordinateFilter(0, 0, 1920, 1080)  // 화면 경계
+
+// 이벤트 타입 필터링
+iohook.setEventTypeFilter(true, false, true)  // 키보드 + 스크롤만
+iohook.setEventTypeFilter(false, true, false) // 마우스 이벤트만
+
+// 모든 필터 제거 (권장)
+iohook.clearFilters()
+
+// DEPRECATED: clearFilters() 사용 권장
+iohook.clearEventFilter()  // 하위 호환성을 위해 여전히 작동함
+```
+
+### 직접 메서드용 타입 정의
+```typescript
+// 직접 필터 메서드 시그니처
+declare function setProcessFilter(processId: number, exclude: boolean): void
+declare function setCoordinateFilter(minX: number, minY: number, maxX: number, maxY: number): void
+declare function setEventTypeFilter(allowKeyboard: boolean, allowMouse: boolean, allowScroll: boolean): void
+declare function clearFilters(): void
+declare function clearEventFilter(): void  // DEPRECATED
 ```
 
 ## TypeScript를 사용한 Electron 통합
@@ -379,8 +410,10 @@ async function ensurePermissions(): Promise<boolean> {
         console.log('권한 상태:', result.message)
         
         // 타입 안전한 권한 요청
+        // 시스템 환경설정 > 개인정보 보호 및 보안 > 손쉬운 사용을 엽니다
         const requestResult: AccessibilityPermissionsResult = iohook.requestAccessibilityPermissions()
         console.log('요청 결과:', requestResult.message)
+        // 반환값: { hasPermissions: false, message: "시스템 환경설정을 여는 중..." }
         
         return false
     }
@@ -405,6 +438,20 @@ async function initializeMonitoring(): Promise<void> {
         }
     }
 }
+```
+
+### AccessibilityPermissionsResult 인터페이스
+```typescript
+// 권한 결과를 위한 타입 정의
+interface AccessibilityPermissionsResult {
+    hasPermissions: boolean  // 현재 권한 상태
+    message: string          // 상태 설명
+}
+
+// checkAccessibilityPermissions()와 requestAccessibilityPermissions()
+// 모두 같은 구조를 반환합니다
+const checkResult: AccessibilityPermissionsResult = iohook.checkAccessibilityPermissions()
+const requestResult: AccessibilityPermissionsResult = iohook.requestAccessibilityPermissions()
 ```
 
 ## TypeScript를 사용한 일반적인 사용 사례

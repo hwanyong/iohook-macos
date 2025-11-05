@@ -116,12 +116,44 @@ export const createCoordinateFilter = (minX, maxX, minY, maxY) => ({
     minX, maxX, minY, maxY
 })
 
+export const createEventTypeFilter = (allowKeyboard, allowMouse, allowScroll) => ({
+    filterByEventType: true,
+    allowKeyboard,
+    allowMouse,
+    allowScroll
+})
+
 // main.mjs
 import iohook from 'iohook-macos'
-import { createProcessFilter, createCoordinateFilter } from './filters.mjs'
+import { createProcessFilter, createCoordinateFilter, createEventTypeFilter } from './filters.mjs'
 
+// Using unified filter interface
 iohook.setEventFilter(createProcessFilter(1234))
 iohook.setEventFilter(createCoordinateFilter(0, 1920, 0, 1080))
+iohook.setEventFilter(createEventTypeFilter(true, false, true))
+```
+
+### Direct Native Filter Methods
+```javascript
+// Direct filter methods (more efficient)
+import iohook from 'iohook-macos'
+
+// Direct process filtering
+iohook.setProcessFilter(1234, false)  // Include only process 1234
+iohook.setProcessFilter(5678, true)   // Exclude process 5678
+
+// Direct coordinate filtering
+iohook.setCoordinateFilter(0, 0, 1920, 1080)  // Screen bounds
+
+// Direct event type filtering
+iohook.setEventTypeFilter(true, false, true)  // Keyboard + Scroll only
+iohook.setEventTypeFilter(false, true, false) // Mouse events only
+
+// Clear all filters (recommended)
+iohook.clearFilters()
+
+// DEPRECATED: Use clearFilters() instead
+iohook.clearEventFilter()  // Still works for backward compatibility
 ```
 
 ## Electron Integration with ESM
@@ -299,6 +331,12 @@ const startMonitoring = async () => {
     try {
         const permissions = iohook.checkAccessibilityPermissions()
         if (!permissions.hasPermissions) {
+            // Request accessibility permissions
+            // Opens System Settings > Privacy & Security > Accessibility
+            const requestResult = iohook.requestAccessibilityPermissions()
+            console.log('Request result:', requestResult.message)
+            // Returns: { hasPermissions: false, message: "Opening System Settings..." }
+            
             throw new PermissionError('Accessibility permissions not granted')
         }
         
@@ -307,6 +345,14 @@ const startMonitoring = async () => {
         handleError(error)
     }
 }
+
+// Permission result object structure
+// Both checkAccessibilityPermissions() and requestAccessibilityPermissions()
+// return the same structure:
+// {
+//     hasPermissions: false,  // boolean - current permission status
+//     message: "Opening System Settings..."  // string - status description
+// }
 ```
 
 ## Event Reference for ESM

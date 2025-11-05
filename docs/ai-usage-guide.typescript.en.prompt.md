@@ -238,9 +238,9 @@ function createProcessFilter(processId: number, exclude: boolean = false): Event
 }
 
 function createCoordinateFilter(
-    minX: number, 
-    maxX: number, 
-    minY: number, 
+    minX: number,
+    maxX: number,
+    minY: number,
     maxY: number
 ): EventFilterOptions {
     return {
@@ -265,10 +265,41 @@ function createEventTypeFilter(
     }
 }
 
-// Usage
+// Usage with unified filter interface
 iohook.setEventFilter(createProcessFilter(1234, false))
 iohook.setEventFilter(createCoordinateFilter(0, 1920, 0, 1080))
 iohook.setEventFilter(createEventTypeFilter(true, false, true))
+```
+
+### Direct Native Filter Methods
+```typescript
+// Type-safe direct filter methods (more efficient)
+// Process filtering
+iohook.setProcessFilter(1234, false)  // Include only process 1234
+iohook.setProcessFilter(5678, true)   // Exclude process 5678
+
+// Coordinate filtering
+iohook.setCoordinateFilter(0, 0, 1920, 1080)  // Screen bounds
+
+// Event type filtering
+iohook.setEventTypeFilter(true, false, true)  // Keyboard + Scroll only
+iohook.setEventTypeFilter(false, true, false) // Mouse events only
+
+// Clear all filters (recommended)
+iohook.clearFilters()
+
+// DEPRECATED: Use clearFilters() instead
+iohook.clearEventFilter()  // Still works for backward compatibility
+```
+
+### Type Definitions for Direct Methods
+```typescript
+// Direct filter method signatures
+declare function setProcessFilter(processId: number, exclude: boolean): void
+declare function setCoordinateFilter(minX: number, minY: number, maxX: number, maxY: number): void
+declare function setEventTypeFilter(allowKeyboard: boolean, allowMouse: boolean, allowScroll: boolean): void
+declare function clearFilters(): void
+declare function clearEventFilter(): void  // DEPRECATED
 ```
 
 ## Electron Integration with TypeScript
@@ -379,8 +410,10 @@ async function ensurePermissions(): Promise<boolean> {
         console.log('Permission status:', result.message)
         
         // Type-safe permission request
+        // Opens System Settings > Privacy & Security > Accessibility
         const requestResult: AccessibilityPermissionsResult = iohook.requestAccessibilityPermissions()
         console.log('Request result:', requestResult.message)
+        // Returns: { hasPermissions: false, message: "Opening System Settings..." }
         
         return false
     }
@@ -405,6 +438,20 @@ async function initializeMonitoring(): Promise<void> {
         }
     }
 }
+```
+
+### AccessibilityPermissionsResult Interface
+```typescript
+// Type definition for permission result
+interface AccessibilityPermissionsResult {
+    hasPermissions: boolean  // Current permission status
+    message: string          // Status description
+}
+
+// Both checkAccessibilityPermissions() and requestAccessibilityPermissions()
+// return this same structure
+const checkResult: AccessibilityPermissionsResult = iohook.checkAccessibilityPermissions()
+const requestResult: AccessibilityPermissionsResult = iohook.requestAccessibilityPermissions()
 ```
 
 ## Common Use Cases with TypeScript

@@ -215,6 +215,11 @@ class MacOSEventHook extends EventEmitter {
         return nativeModule.checkAccessibilityPermissions();
     }
 
+    // Request accessibility permissions (opens system dialog)
+    requestAccessibilityPermissions() {
+        return nativeModule.requestAccessibilityPermissions();
+    }
+
     // Performance controls
     enablePerformanceMode() {
         console.log('[iohook-macos] JavaScript: Performance mode enabled - Optimized for high-frequency events');
@@ -238,11 +243,48 @@ class MacOSEventHook extends EventEmitter {
 
     // Event filtering
     setEventFilter(options) {
-        return nativeModule.setEventFilter(options);
+        if (options.filterByProcessId) {
+            nativeModule.setProcessFilter(
+                options.targetProcessId,
+                options.excludeProcessId || false
+            );
+        }
+        if (options.filterByCoordinates) {
+            nativeModule.setCoordinateFilter(
+                options.minX, options.minY,
+                options.maxX, options.maxY
+            );
+        }
+        if (options.filterByEventType) {
+            nativeModule.setEventTypeFilter(
+                options.allowKeyboard !== false,
+                options.allowMouse !== false,
+                options.allowScroll !== false
+            );
+        }
     }
 
+    // Direct native filter methods
+    setProcessFilter(processId, exclude) {
+        return nativeModule.setProcessFilter(processId, exclude);
+    }
+
+    setCoordinateFilter(minX, minY, maxX, maxY) {
+        return nativeModule.setCoordinateFilter(minX, minY, maxX, maxY);
+    }
+
+    setEventTypeFilter(allowKeyboard, allowMouse, allowScroll) {
+        return nativeModule.setEventTypeFilter(allowKeyboard, allowMouse, allowScroll);
+    }
+
+    // Rename for consistency with native module
+    clearFilters() {
+        return nativeModule.clearFilters();
+    }
+
+    // Backward compatibility alias
     clearEventFilter() {
-        return nativeModule.clearEventFilter();
+        return this.clearFilters();
     }
 
     // Event modification
