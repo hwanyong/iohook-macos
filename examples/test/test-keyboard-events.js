@@ -4,11 +4,24 @@ console.log('=== iohook-macos Keyboard Events Test ===')
 console.log('This test focuses on keyboard input detection.')
 console.log('Please type keys, use modifiers (Shift, Cmd, Ctrl, Option)...\n')
 
+let hasError = false
+let errorObj = null
+let iohook = null
+
 try {
-    const iohook = require('../../index.js')
+    iohook = require('../../index.js')
+} catch (e) {
+    hasError = true
+    errorObj = e
+}
+
+if (hasError) {
+    console.error('Keyboard event test failed:', errorObj)
+    process.exit(1)
+}
     
-    // Set up keyboard-focused event listeners
-    iohook.on('keyDown', (eventData) => {
+// Set up keyboard-focused event listeners
+iohook.on('keyDown', (eventData) => {
         console.log('⬇️  Key Down:')
         console.log('  - Key Code:', eventData.keyCode)
         console.log('  - Modifiers:', JSON.stringify(eventData.modifiers, null, 2))
@@ -51,8 +64,3 @@ try {
         console.log('If you saw keyboard events above, keyboard detection is working! 🎉')
         process.exit(0)
     }, 20000)
-    
-} catch (error) {
-    console.error('Keyboard event test failed:', error)
-    process.exit(1)
-} 

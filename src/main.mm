@@ -72,13 +72,13 @@ bool isModificationEnabled = false;
 
 // Event callback function
 CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
-    // Handle Event Tap timeout - re-enable if macOS disabled it
+    // Early return: Handle Event Tap timeout - re-enable if macOS disabled it
     if (type == kCGEventTapDisabledByTimeout) {
         std::cout << "[iohook-macos] Event tap disabled by timeout, re-enabling..." << std::endl;
-        if (eventTap) {
-            CGEventTapEnable(eventTap, true);
-            std::cout << "[iohook-macos] Event tap re-enabled successfully" << std::endl;
-        }
+        if (!eventTap) return event;
+        
+        CGEventTapEnable(eventTap, true);
+        std::cout << "[iohook-macos] Event tap re-enabled successfully" << std::endl;
         return event;
     }
     
@@ -106,22 +106,22 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
     
     // Performance optimization and filtering for mouse move events
     if (type == kCGEventMouseMoved) {
-        // Throttle mouse move events
-        if (performanceConfig.enableMouseMoveThrottling) {
-            double currentTime = CFAbsoluteTimeGetCurrent();
-            if (currentTime - performanceConfig.lastMouseMoveTime < performanceConfig.mouseMoveThrottleInterval) {
-                return event; // Skip this mouse move event due to throttling
-            }
-            performanceConfig.lastMouseMoveTime = currentTime;
-        }
-        
         // Performance mode: optionally skip mouse move events entirely
         if (performanceConfig.enablePerformanceMode && performanceConfig.skipMouseMoveInPerformanceMode) {
             return event;
         }
+        
+        // Throttle mouse move events - early return if too frequent
+        if (performanceConfig.enableMouseMoveThrottling) {
+            double currentTime = CFAbsoluteTimeGetCurrent();
+            if (currentTime - performanceConfig.lastMouseMoveTime < performanceConfig.mouseMoveThrottleInterval) {
+                return event;
+            }
+            performanceConfig.lastMouseMoveTime = currentTime;
+        }
     }
     
-    // Check if this is a supported event type
+    // Early return: Check if this is a supported event type
     bool isSupportedEvent = (type == kCGEventKeyDown || type == kCGEventKeyUp ||
                            type == kCGEventFlagsChanged ||
                            type == kCGEventLeftMouseDown || type == kCGEventLeftMouseUp ||
@@ -132,67 +132,64 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
                            type == kCGEventOtherMouseDragged || type == kCGEventTabletPointer ||
                            type == kCGEventTabletProximity);
     
-    if (!isSupportedEvent) {
-        return event; // Ignore unsupported events
-    }
+    if (!isSupportedEvent) return event; // Early return: Ignore unsupported events
     
     // Log detected events to console (C++ side) - only if verbose logging is enabled
     if (performanceConfig.enableVerboseLogging) {
         std::cout << "[iohook-macos] Event detected - CGEventType: " << type << std::endl;
     }
     
-    // Apply event filtering if enabled
-    if (eventFilter.enabled) {
-        // Get event data for filtering
+    // Early return: Skip filtering if not enabled
+    if (!eventFilter.enabled) {
+        // Continue to event processing
+    } else {
+        // Apply event filtering - get event data once
         CGPoint location = CGEventGetLocation(event);
         int64_t processId = CGEventGetIntegerValueField(event, kCGEventTargetUnixProcessID);
         
-        // Process ID filtering
+        // Process ID filtering - early return if filtered out
         if (eventFilter.filterByProcessId) {
-            if (eventFilter.excludeProcessId) {
-                // Exclude events from target process
-                if (processId == eventFilter.targetProcessId) {
-                    if (performanceConfig.enableVerboseLogging) {
-                        std::cout << "[iohook-macos] Event filtered out (excluded process: " << processId << ")" << std::endl;
-                    }
-                    return event; // Pass through without processing
+            bool shouldFilter = eventFilter.excludeProcessId
+                ? (processId == eventFilter.targetProcessId)
+                : (processId != eventFilter.targetProcessId);
+            
+            if (shouldFilter) {
+                if (performanceConfig.enableVerboseLogging) {
+                    std::cout << "[iohook-macos] Event filtered out (process: " << processId << ")" << std::endl;
                 }
-            } else {
-                // Include only events from target process
-                if (processId != eventFilter.targetProcessId) {
-                    if (performanceConfig.enableVerboseLogging) {
-                        std::cout << "[iohook-macos] Event filtered out (process not matching: " << processId << ")" << std::endl;
-                    }
-                    return event; // Pass through without processing
-                }
+                return event;
             }
         }
         
-        // Coordinate filtering
+        // Coordinate filtering - early return if outside range
         if (eventFilter.filterByCoordinates) {
-            if (location.x < eventFilter.minX || location.x > eventFilter.maxX ||
-                location.y < eventFilter.minY || location.y > eventFilter.maxY) {
+            bool outsideRange = (location.x < eventFilter.minX || location.x > eventFilter.maxX ||
+                                location.y < eventFilter.minY || location.y > eventFilter.maxY);
+            
+            if (outsideRange) {
                 if (performanceConfig.enableVerboseLogging) {
-                    std::cout << "[iohook-macos] Event filtered out (outside coordinate range: " 
+                    std::cout << "[iohook-macos] Event filtered out (outside coordinate range: "
                               << location.x << ", " << location.y << ")" << std::endl;
                 }
-                return event; // Pass through without processing
+                return event;
             }
         }
         
-        // Event type filtering
+        // Event type filtering - early return if not allowed
         if (eventFilter.filterByEventType) {
             bool isKeyboard = (type == kCGEventKeyDown || type == kCGEventKeyUp || type == kCGEventFlagsChanged);
             bool isMouse = (type >= kCGEventLeftMouseDown && type <= kCGEventRightMouseDragged);
             bool isScroll = (type == kCGEventScrollWheel);
             
-            if ((isKeyboard && !eventFilter.allowKeyboard) ||
-                (isMouse && !eventFilter.allowMouse) ||
-                (isScroll && !eventFilter.allowScroll)) {
+            bool notAllowed = (isKeyboard && !eventFilter.allowKeyboard) ||
+                             (isMouse && !eventFilter.allowMouse) ||
+                             (isScroll && !eventFilter.allowScroll);
+            
+            if (notAllowed) {
                 if (performanceConfig.enableVerboseLogging) {
                     std::cout << "[iohook-macos] Event filtered out (event type not allowed: " << type << ")" << std::endl;
                 }
-                return event; // Pass through without processing
+                return event;
             }
         }
         
@@ -386,12 +383,13 @@ Napi::Value SetEmitFunction(const Napi::CallbackInfo& info) {
 Napi::Value StartMonitoring(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     
+    // Early return: already monitoring
     if (isMonitoring) {
         std::cout << "[iohook-macos] Monitoring is already active" << std::endl;
         return env.Undefined();
     }
     
-    // Check if accessibility permissions are granted
+    // Early return: Check if accessibility permissions are granted
     if (!AXIsProcessTrusted()) {
         std::cout << "[iohook-macos] ERROR: Accessibility permissions not granted!" << std::endl;
         std::cout << "[iohook-macos] Please enable accessibility permissions in System Preferences" << std::endl;
@@ -461,6 +459,7 @@ Napi::Value StartMonitoring(const Napi::CallbackInfo& info) {
 Napi::Value StopMonitoring(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     
+    // Early return: not monitoring
     if (!isMonitoring) {
         std::cout << "[iohook-macos] Monitoring is not active" << std::endl;
         return env.Undefined();
@@ -510,6 +509,7 @@ Napi::Value IsMonitoring(const Napi::CallbackInfo& info) {
 Napi::Value EnableModificationAndConsumption(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     
+    // Early return: already enabled
     if (isModificationEnabled) {
         std::cout << "[iohook-macos] Event modification and consumption is already enabled" << std::endl;
         return env.Undefined();
@@ -529,6 +529,7 @@ Napi::Value EnableModificationAndConsumption(const Napi::CallbackInfo& info) {
 Napi::Value DisableModificationAndConsumption(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     
+    // Early return: already disabled
     if (!isModificationEnabled) {
         std::cout << "[iohook-macos] Event modification and consumption is already disabled" << std::endl;
         return env.Undefined();

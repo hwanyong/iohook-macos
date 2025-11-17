@@ -17,6 +17,15 @@ try {
     console.log('  - Any other mouse buttons')
     console.log('')
     
+    // Mouse button name mapping
+    const buttonNameMap = new Map([
+        [2, 'Middle Button (Wheel Click)'],
+        [3, 'Side Button 1 (Back)'],
+        [4, 'Side Button 2 (Forward)'],
+        [5, 'Extra Button 1'],
+        [6, 'Extra Button 2']
+    ])
+    
     // Additional mouse button events
     iohook.on('otherMouseDown', (eventData) => {
         console.log('🔘 Other Mouse Button Down:')
@@ -26,15 +35,7 @@ try {
         console.log('  - Process ID:', eventData.processId)
         
         // Identify common button types
-        let buttonName = 'Unknown'
-        switch(eventData.otherMouseButton) {
-            case 2: buttonName = 'Middle Button (Wheel Click)'; break
-            case 3: buttonName = 'Side Button 1 (Back)'; break
-            case 4: buttonName = 'Side Button 2 (Forward)'; break
-            case 5: buttonName = 'Extra Button 1'; break
-            case 6: buttonName = 'Extra Button 2'; break
-            default: buttonName = `Button ${eventData.otherMouseButton}`
-        }
+        const buttonName = buttonNameMap.get(eventData.otherMouseButton) || `Button ${eventData.otherMouseButton}`
         console.log('  - Button Type:', buttonName)
         console.log('')
     })
@@ -58,12 +59,17 @@ try {
         console.log('✏️  Tablet Pointer Event:')
         console.log('  - Location: (' + eventData.x + ', ' + eventData.y + ')')
         console.log('  - Pressure:', eventData.tablet.pressure)
-        if (eventData.tablet.tiltX !== 0 || eventData.tablet.tiltY !== 0) {
+        
+        // Early return pattern for optional tilt data
+        if (eventData.tablet.tiltX != 0 || eventData.tablet.tiltY != 0) {
             console.log('  - Tilt: (' + eventData.tablet.tiltX + ', ' + eventData.tablet.tiltY + ')')
         }
-        if (eventData.tablet.rotation !== 0) {
+        
+        // Early return pattern for optional rotation data
+        if (eventData.tablet.rotation != 0) {
             console.log('  - Rotation:', eventData.tablet.rotation)
         }
+        
         console.log('  - Device ID:', eventData.tablet.deviceID)
         console.log('')
     })

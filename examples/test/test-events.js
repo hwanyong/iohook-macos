@@ -4,12 +4,25 @@ console.log('=== iohook-macos Event Bridge Test ===')
 console.log('This test will monitor keyboard and mouse events for 10 seconds.')
 console.log('Try pressing keys and clicking mouse buttons...\n')
 
+// Load the module
+let hasError = false
+let errorObj = null
+let iohook = null
+
 try {
-    // Load the module
-    const iohook = require('../../index.js')
+    iohook = require('../../index.js')
+} catch (e) {
+    hasError = true
+    errorObj = e
+}
+
+if (hasError) {
+    console.error('Test failed:', errorObj)
+    process.exit(1)
+}
     
-    // Set up event listeners
-    iohook.on('keyDown', (eventData) => {
+// Set up event listeners
+iohook.on('keyDown', (eventData) => {
         console.log('🔽 Key Down Event:', eventData)
     })
     
@@ -41,8 +54,3 @@ try {
         console.log('If you saw events above, the bridge is working perfectly! 🎉')
         process.exit(0)
     }, 10000)
-    
-} catch (error) {
-    console.error('Test failed:', error)
-    process.exit(1)
-} 

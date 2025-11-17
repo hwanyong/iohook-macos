@@ -4,11 +4,24 @@ console.log('=== iohook-macos Detailed Event Data Test ===')
 console.log('This test will show all available event data fields.')
 console.log('Try different input types: keys, mouse buttons, scroll wheel...\n')
 
+let hasError = false
+let errorObj = null
+let iohook = null
+
 try {
-    const iohook = require('../../index.js')
+    iohook = require('../../index.js')
+} catch (e) {
+    hasError = true
+    errorObj = e
+}
+
+if (hasError) {
+    console.error('Detailed event test failed:', errorObj)
+    process.exit(1)
+}
     
-    // Set up detailed event listeners
-    iohook.on('keyDown', (eventData) => {
+// Set up detailed event listeners
+iohook.on('keyDown', (eventData) => {
         console.log('🔽 Key Down Event:')
         console.log('  - Type:', eventData.type)
         console.log('  - Key Code:', eventData.keyCode)
@@ -76,8 +89,3 @@ try {
         console.log('All available event fields have been implemented! 🎉')
         process.exit(0)
     }, 15000)
-    
-} catch (error) {
-    console.error('Detailed event test failed:', error)
-    process.exit(1)
-} 

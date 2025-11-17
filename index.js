@@ -2,13 +2,16 @@ const EventEmitter = require('events');
 const path = require('path');
 
 // Load the native module using node-gyp-build for better binary distribution
-let nativeModule;
-try {
-    nativeModule = require('node-gyp-build')(path.join(__dirname));
-    console.log('[iohook-macos] Native module loaded successfully via node-gyp-build');
-} catch (buildError) {
+const loadNativeModule = () => {
+    // Try node-gyp-build first
+    const nodeGypResult = tryRequireModule(() => require('node-gyp-build')(path.join(__dirname)));
+    if (nodeGypResult.success) {
+        console.log('[iohook-macos] Native module loaded successfully via node-gyp-build');
+        return nodeGypResult;
+    }
+    
     console.log('[iohook-macos] node-gyp-build failed, trying fallback paths...');
-    console.log('[iohook-macos] Error:', buildError.message);
+    console.log('[iohook-macos] Error:', nodeGypResult.error);
     
     // Try multiple fallback paths
     const fallbackPaths = [
@@ -17,30 +20,77 @@ try {
         './prebuilds/darwin-x64/iohook-macos.node'
     ];
     
-    let loaded = false;
     for (const fallbackPath of fallbackPaths) {
-        try {
-            nativeModule = require(fallbackPath);
+        const fallbackResult = tryRequireModule(() => require(fallbackPath));
+        if (fallbackResult.success) {
             console.log(`[iohook-macos] Native module loaded via fallback path: ${fallbackPath}`);
-            loaded = true;
-            break;
-        } catch (err) {
-            console.log(`[iohook-macos] Failed to load from ${fallbackPath}`);
+            return fallbackResult;
         }
+        console.log(`[iohook-macos] Failed to load from ${fallbackPath}`);
     }
     
-    if (!loaded) {
-        console.error('[iohook-macos] All fallback paths failed');
-        console.error('[iohook-macos] Platform:', process.platform);
-        console.error('[iohook-macos] Architecture:', process.arch);
-        console.error('[iohook-macos] Node version:', process.version);
-        throw new Error(
-            'Native module could not be loaded. ' +
-            'This package requires macOS (darwin) and may need to be rebuilt. ' +
-            'Try running: npm run rebuild'
-        );
+    console.error('[iohook-macos] All fallback paths failed');
+    console.error('[iohook-macos] Platform:', process.platform);
+    console.error('[iohook-macos] Architecture:', process.arch);
+    console.error('[iohook-macos] Node version:', process.version);
+    
+    return {
+        success: false,
+        error: 'Native module could not be loaded. ' +
+               'This package requires macOS (darwin) and may need to be rebuilt. ' +
+               'Try running: npm run rebuild',
+        module: null
+    };
+};
+
+const tryRequireModule = (requireFn) => {
+    const result = { success: false, error: null, module: null };
+    
+    const moduleOrError = safeExecute(requireFn);
+    if (moduleOrError.error) {
+        result.error = moduleOrError.error.message;
+        return result;
     }
+    
+    result.success = true;
+    result.module = moduleOrError.value;
+    return result;
+};
+
+const safeExecute = (fn) => {
+    const returnValue = { error: null, value: null };
+    
+    // Minimal try-catch for require() which can throw
+    let hasError = false;
+    let errorObj = null;
+    let valueObj = null;
+    
+    try {
+        valueObj = fn();
+    } catch (e) {
+        hasError = true;
+        errorObj = e;
+    }
+    
+    if (hasError) {
+        returnValue.error = errorObj;
+        return returnValue;
+    }
+    
+    returnValue.value = valueObj;
+    return returnValue;
+};
+
+const moduleLoadResult = loadNativeModule();
+if (!moduleLoadResult.success) {
+    // Instead of throwing, we could return error object, but for module loading we must fail
+    // This is acceptable as it's at module initialization time
+    const error = new Error(moduleLoadResult.error);
+    error.loadAttempt = moduleLoadResult;
+    throw error;
 }
+
+const nativeModule = moduleLoadResult.module;
 
 // CGEventType to String mapping table
 const CGEventTypes = {
@@ -103,55 +153,63 @@ class MacOSEventHook extends EventEmitter {
         this.pollingRate = Math.max(1, ms); // Minimum 1ms
         console.log(`[iohook-macos] Polling rate set to ${this.pollingRate}ms`);
         
+        // Early return if not monitoring
+        if (!this._isMonitoring) return;
+        
         // Restart polling if already running
-        if (this._isMonitoring) {
-            this.stopPolling();
-            this.startPolling();
-        }
+        this.stopPolling();
+        this.startPolling();
     }
     
     // Start event polling
     startPolling() {
+        // Early return if already polling
         if (this.pollingInterval) return;
         
         this.pollingInterval = setInterval(() => {
-            try {
-                // Get all available events
-                let event;
-                let eventCount = 0;
-                const maxEventsPerPoll = 50; // Prevent blocking
-                
-                while ((event = nativeModule.getNextEvent()) && eventCount < maxEventsPerPoll) {
-                    // event.type is now an int (CGEventType value)
-                    const eventTypeInt = event.type
-                    const eventTypeString = CGEventTypes[eventTypeInt] || "unknown"
-                    
-                    // Emit with both int and string for user convenience
-                    this.emit(eventTypeInt, event)        // For users who want to use int
-                    this.emit(eventTypeString, event)     // For users who want to use string
-                    this.emit('event', event)             // Generic event for all types
-                    
-                    eventCount++;
-                }
-                
-                if (eventCount >= maxEventsPerPoll) {
-                    console.log(`[iohook-macos] Processed ${eventCount} events in one poll cycle`);
-                }
-            } catch (error) {
-                console.error('[iohook-macos] Error during polling:', error);
-            }
+            this._processEventQueue();
         }, this.pollingRate);
         
         console.log(`[iohook-macos] Polling started at ${this.pollingRate}ms intervals`);
     }
     
+    // Process event queue (extracted for clarity)
+    _processEventQueue() {
+        let event;
+        let eventCount = 0;
+        const maxEventsPerPoll = 50; // Prevent blocking
+        
+        while ((event = nativeModule.getNextEvent()) && eventCount < maxEventsPerPoll) {
+            this._emitEvent(event);
+            eventCount++;
+        }
+        
+        // Log only if we hit the limit
+        if (eventCount >= maxEventsPerPoll) {
+            console.log(`[iohook-macos] Processed ${eventCount} events in one poll cycle`);
+        }
+    }
+    
+    // Emit event with multiple formats (extracted for clarity)
+    _emitEvent(event) {
+        // event.type is now an int (CGEventType value)
+        const eventTypeInt = event.type;
+        const eventTypeString = CGEventTypes[eventTypeInt] || "unknown";
+        
+        // Emit with both int and string for user convenience
+        this.emit(eventTypeInt, event);        // For users who want to use int
+        this.emit(eventTypeString, event);     // For users who want to use string
+        this.emit('event', event);             // Generic event for all types
+    }
+    
     // Stop event polling
     stopPolling() {
-        if (this.pollingInterval) {
-            clearInterval(this.pollingInterval);
-            this.pollingInterval = null;
-            console.log('[iohook-macos] Polling stopped');
-        }
+        // Early return if not polling
+        if (!this.pollingInterval) return;
+        
+        clearInterval(this.pollingInterval);
+        this.pollingInterval = null;
+        console.log('[iohook-macos] Polling stopped');
     }
 
     // Start monitoring (includes native start + polling)
@@ -243,23 +301,29 @@ class MacOSEventHook extends EventEmitter {
 
     // Event filtering
     setEventFilter(options) {
+        // Early return if no options
+        if (!options) return;
+        
+        // Early return pattern for each filter type
         if (options.filterByProcessId) {
             nativeModule.setProcessFilter(
                 options.targetProcessId,
                 options.excludeProcessId || false
             );
         }
+        
         if (options.filterByCoordinates) {
             nativeModule.setCoordinateFilter(
                 options.minX, options.minY,
                 options.maxX, options.maxY
             );
         }
+        
         if (options.filterByEventType) {
             nativeModule.setEventTypeFilter(
-                options.allowKeyboard !== false,
-                options.allowMouse !== false,
-                options.allowScroll !== false
+                options.allowKeyboard != false,
+                options.allowMouse != false,
+                options.allowScroll != false
             );
         }
     }
